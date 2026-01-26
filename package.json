@@ -5,9 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "dev:tunnel": "ngrok http 3000",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@decent.xyz/box-common": "^5.0.123",
