@@ -74,7 +74,7 @@ export function ShareButtons({ reviewId, review }: ShareButtonsProps) {
     : formatAddress(review.reviewee);
   
   // Compose share text with review content and attribution
-  const shareText = `${review.content}\n\n${reviewerLabel} made an onchain review for ${revieweeLabel} via ReviewMe`;
+  const shareText = `${review.content}\n\n${reviewerLabel} made an onchain review for ${revieweeLabel} via FrameRanker`;
 
   const handleCopyLink = async () => {
     try {

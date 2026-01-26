@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return constructMetadata({
     title: `${displayName} (${reviewsText})`,
-    description: `Check out onchain reviews for ${displayName}${bio}. ${reviewsText} on ReviewMe.`,
+    description: `Check out onchain reviews for ${displayName}${bio}. ${reviewsText} on FrameRanker.`,
     path: `/user/${address}`,
     imageUrl: profile?.pfp?.url,
     frameButtonTitle: `Review ${displayName}`,

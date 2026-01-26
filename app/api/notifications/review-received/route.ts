@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Verify the transaction interacted with our ReviewMe contract
+      // Verify the transaction interacted with our FrameRanker contract
       const reviewSubmittedEvent = tx.logs.find(
         (log) => 
           log.address.toLowerCase() === REVIEWME_CONTRACT_ADDRESS.toLowerCase() &&

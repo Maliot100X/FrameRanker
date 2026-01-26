@@ -5,6 +5,7 @@ import { Providers } from "./providers";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
 import { NotificationModal } from "@/components/NotificationModal";
+import { AppTour } from "@/components/AppTour";
 import { Footer } from "@/components/Footer";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -21,6 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"
@@ -40,6 +42,7 @@ export default function RootLayout({
             <Footer />
             <BottomNav />
             <NotificationModal />
+            <AppTour />
           </div>
         </Providers>
       </body>

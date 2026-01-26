@@ -57,6 +57,8 @@ export default function AIPage() {
     if (!input.trim()) return;
 
     const userMessage = input;
+    const isCastCommand = userMessage.trim().toLowerCase().startsWith("/cast");
+
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
@@ -69,6 +71,7 @@ export default function AIPage() {
           message: userMessage,
           fid: user?.fid,
           username: user?.username,
+          isCastCommand,
         }),
       });
 
@@ -83,6 +86,11 @@ export default function AIPage() {
           action: data.action,
         },
       ]);
+      
+      // If it was a cast command, automatically open the share/cast composer
+      if (isCastCommand && data.message) {
+        handleShare(data.message);
+      }
     } catch (error) {
       console.error("AI Chat error:", error);
       toast.error("Failed to get response from AI");

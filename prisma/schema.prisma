@@ -28,6 +28,8 @@ model User {
   payments          Payment[]
   subscription      Subscription?
   wonGiveaways      GiveawayWinner[]
+  
+  hasSeenTour       Boolean  @default(false)
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

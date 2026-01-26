@@ -60,7 +60,7 @@ export function constructMetadata({
   description,
   path = "",
   imageUrl,
-  frameButtonTitle = "Open ReviewMe",
+  frameButtonTitle = "Open FrameRanker",
 }: GenerateMetadataProps = {}): Metadata {
   // Use environment variable for base URL, fallback to production URL
   let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://frame-ranker.vercel.app";

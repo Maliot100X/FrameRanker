@@ -161,7 +161,7 @@ export default function UserProfilePageContent({
       const profileUrl =
         typeof window !== "undefined"
           ? `${window.location.origin}/user/${address}`
-          : `https://reviewme.fun/user/${address}`;
+          : `https://frame-ranker.vercel.app/user/${address}`;
 
       // Copy to clipboard
       await navigator.clipboard.writeText(profileUrl);
@@ -179,7 +179,7 @@ export default function UserProfilePageContent({
         textArea.value =
           typeof window !== "undefined"
             ? `${window.location.origin}/user/${address}`
-            : `https://reviewme.fun/user/${address}`;
+            : `https://frame-ranker.vercel.app/user/${address}`;
         textArea.style.position = "fixed";
         textArea.style.opacity = "0";
         document.body.appendChild(textArea);
@@ -235,7 +235,7 @@ export default function UserProfilePageContent({
         const profileUrl =
           typeof window !== "undefined"
             ? `${window.location.origin}/user/${address}`
-            : `https://reviewme.fun/user/${address}`;
+            : `https://frame-ranker.vercel.app/user/${address}`;
         await navigator.clipboard.writeText(profileUrl);
         alert("Profile URL copied to clipboard");
       } catch (clipboardError) {

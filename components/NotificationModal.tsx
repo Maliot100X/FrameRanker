@@ -89,7 +89,7 @@ export function NotificationModal() {
   const handleClose = () => {
     setIsOpen(false);
     if (dontShowAgain) {
-      localStorage.setItem('reviewme-notification-modal-dismissed', 'true');
+      localStorage.setItem('frameranker-notification-modal-dismissed', 'true');
     }
   };
 

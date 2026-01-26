@@ -97,7 +97,7 @@ export async function generateMetadata({
     console.error("Failed to generate metadata for review:", error);
     // Return basic metadata if fetch fails (e.g., for newly created reviews)
     return constructMetadata({
-      title: `Review #${reviewId} | ReviewMe`,
+      title: `Review #${reviewId} | FrameRanker`,
     });
   }
 }

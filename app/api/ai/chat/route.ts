@@ -5,7 +5,7 @@ const BASE_URL = "https://api.aimlapi.com/chat/completions"; // Standard AIML en
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, fid, username } = await request.json();
+    const { message, fid, username, isCastCommand } = await request.json();
 
     if (!AIML_API_KEY) {
         return NextResponse.json({ 
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         });
     }
 
-    const systemPrompt = `
+    let systemPrompt = `
 You are FrameRanker AI, an assistant for a Farcaster Mini App.
 Your goal is to help users boost their profiles, get reviews, and understand the leaderboard.
 Users can pay for:
@@ -37,6 +37,18 @@ $0.30 = 0.0001 ETH
 
 User context: FID: ${fid}, Username: ${username}
     `;
+
+    if (isCastCommand) {
+        systemPrompt = `
+You are FrameRanker AI. The user wants to post a cast to Farcaster.
+Generate a catchy, engaging Farcaster cast (max 320 chars) about their experience on FrameRanker.
+Include emojis.
+Mention their username @${username} if known.
+If you know their rank or score (assume they are doing well), mention it.
+Encourage others to check out FrameRanker.
+Do NOT output the JSON action marker. Just the cast text.
+        `;
+    }
 
     const response = await fetch(BASE_URL, {
       method: "POST",

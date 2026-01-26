@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return constructMetadata({
     title: "Write a Review",
-    description: "Share your authentic feedback and earn ReviewMe tokens",
+    description: "Share your authentic feedback and earn FrameRanker tokens",
     path,
   });
 }
