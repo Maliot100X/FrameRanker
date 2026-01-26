@@ -1,57 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http, fallback } from "viem";
-import { base } from "viem/chains";
-import { BASE_RPC_ENDPOINTS } from "@/lib/reviewme-contract";
+import { prisma } from "@/lib/db.server";
 
-function _getTransport(rpcEndpoints: readonly string[]) {
-  return fallback(
-    rpcEndpoints.map((url) =>
-      http(url, {
-        timeout: 2_000,
-        retryCount: 0,
-      })
-    ),
-    { rank: false }
-  );
-}
-
-const REVIEWME_CONTRACT_ADDRESS =
-  (process.env.NEXT_PUBLIC_REVIEWME_CONTRACT_ADDRESS as `0x${string}`) ||
-  "0x5BfC8705cF877776e461e27FAcB51D8C2bDd00c7";
-
-const REVIEWME_ABI = [
-  {
-    type: "function",
-    name: "getRecentReviews",
-    stateMutability: "view",
-    inputs: [
-      { name: "offset", type: "uint256" },
-      { name: "limit", type: "uint256" },
-    ],
-    outputs: [
-      {
-        type: "tuple[]",
-        components: [
-          { name: "reviewer", type: "address" },
-          { name: "reviewee", type: "address" },
-          { name: "content", type: "string" },
-          { name: "emoji", type: "uint8" },
-          { name: "timestamp", type: "uint256" },
-        ],
-      },
-      { name: "reviewIds", type: "uint256[]" },
-    ],
-  },
-] as const;
+// MOCK DATA FOR NOW since we don't have enough real data for FrameRanker logic
+// In production, this would query Supabase for boosts and smart contract for reviews
 
 export interface LeaderboardEntry {
-  address: string;
-  count: number;
+  id: string;
+  address?: string;
+  url?: string;
+  score: number;
+  rank?: number;
 }
 
 export interface LeaderboardData {
+  topProfiles: LeaderboardEntry[];
+  topPosts: LeaderboardEntry[];
   topReviewers: LeaderboardEntry[];
-  topReviewees: LeaderboardEntry[];
   lastUpdated: number;
 }
 
@@ -79,105 +43,96 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log("[API] Fetching fresh leaderboard data...");
+    console.log("[API] Generating leaderboard data...");
 
-    // Create public client
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: _getTransport(BASE_RPC_ENDPOINTS),
-    });
+    // 1. Fetch Active Profile Boosts
+    let boostedProfiles: LeaderboardEntry[] = [];
+    try {
+        const activeProfileBoosts = await prisma.boost.findMany({
+            where: {
+                type: 'PROFILE',
+                status: 'ACTIVE',
+                endTime: { gt: new Date() }
+            },
+            include: { user: true },
+            orderBy: { startTime: 'desc' }
+        });
 
-    // Fetch recent 5000 reviews in parallel batches of 500
-    const BATCH_SIZE = 500;
-    const TOTAL_FETCH = 5000;
-    const batchCount = Math.ceil(TOTAL_FETCH / BATCH_SIZE);
-
-    const batchPromises = Array.from({ length: batchCount }, (_, i) => {
-      const offset = BigInt(i * BATCH_SIZE);
-      return publicClient.readContract({
-        address: REVIEWME_CONTRACT_ADDRESS,
-        abi: REVIEWME_ABI,
-        functionName: "getRecentReviews",
-        args: [offset, BigInt(BATCH_SIZE)],
-      }) as Promise<[any[], bigint[]]>;
-    });
-
-    const results = await Promise.all(batchPromises);
-    const reviews = results.flatMap(([batchReviews]) => batchReviews);
-
-    // Aggregate counts
-    const reviewerCounts = new Map<string, number>();
-    const revieweeCounts = new Map<string, number>();
-
-    reviews.forEach((review: any) => {
-      // Count reviews written
-      const reviewerAddr = review.reviewer.toLowerCase();
-      reviewerCounts.set(
-        reviewerAddr,
-        (reviewerCounts.get(reviewerAddr) || 0) + 1
-      );
-
-      // Count reviews received
-      const revieweeAddr = review.reviewee.toLowerCase();
-      revieweeCounts.set(
-        revieweeAddr,
-        (revieweeCounts.get(revieweeAddr) || 0) + 1
-      );
-    });
-
-    // Sort and get top 10
-    const topReviewers = [...reviewerCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([address, count]) => ({ address, count }));
-
-    const topReviewees = [...revieweeCounts.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 10)
-      .map(([address, count]) => ({ address, count }));
-
-    // Create result
-    const result: LeaderboardData = {
-      topReviewers,
-      topReviewees,
-      lastUpdated: Date.now(),
-    };
-
-    // Update cache
-    leaderboardCache = result;
-    cacheTimestamp = Date.now();
-
-    console.log("[API] Leaderboard data updated:", {
-      reviewers: topReviewers.length,
-      reviewees: topReviewees.length,
-      totalReviews: reviews.length,
-    });
-
-    return NextResponse.json(result, {
-      headers: {
-        "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300",
-      },
-    });
-  } catch (error: any) {
-    console.error("[API] Failed to fetch leaderboard data:", error);
-
-    // Return cached data if available, even if expired
-    if (leaderboardCache) {
-      console.log("[API] Returning stale cache due to error");
-      return NextResponse.json(leaderboardCache, {
-        headers: {
-          "Cache-Control": "public, s-maxage=600, stale-while-revalidate=300",
-        },
-      });
+        boostedProfiles = activeProfileBoosts.map((boost, i) => ({
+            id: boost.userId,
+            address: boost.user.walletAddress || undefined,
+            username: boost.user.username || undefined,
+            pfpUrl: boost.user.pfpUrl || undefined,
+            score: 10000, // High score for boosted
+            rank: i + 1,
+        }));
+    } catch (e) {
+        console.error("Failed to fetch profile boosts:", e);
     }
 
-    // Return empty data if no cache
-    const emptyResult: LeaderboardData = {
-      topReviewers: [],
-      topReviewees: [],
-      lastUpdated: 0,
-    };
+    // 2. Fetch Active Post Boosts
+    let boostedPosts: LeaderboardEntry[] = [];
+    try {
+        const activePostBoosts = await prisma.boost.findMany({
+            where: {
+                type: 'POST',
+                status: 'ACTIVE',
+                endTime: { gt: new Date() }
+            },
+            include: { post: true },
+            orderBy: { startTime: 'desc' }
+        });
 
-    return NextResponse.json(emptyResult, { status: 500 });
+        boostedPosts = activePostBoosts.map((boost, i) => ({
+            id: boost.targetPostId!,
+            url: boost.post?.url,
+            score: 5000, // High score for boosted
+            rank: i + 1,
+        }));
+    } catch (e) {
+        console.error("Failed to fetch post boosts:", e);
+    }
+
+    // MOCK DATA GENERATION (Fallback/Fill)
+    const mockProfiles = Array.from({ length: 10 }, (_, i) => ({
+      id: `user-${i}`,
+      address: `0x${Math.random().toString(16).slice(2, 42)}`,
+      score: 1000 - i * 50,
+      rank: i + 1 + boostedProfiles.length,
+    }));
+
+    const topProfiles = [...boostedProfiles, ...mockProfiles].slice(0, 20);
+
+    const mockPosts = Array.from({ length: 10 }, (_, i) => ({
+      id: `post-${i}`,
+      url: `https://warpcast.com/user${i}/0x${Math.random().toString(16).slice(2, 10)}`,
+      score: 500 - i * 20,
+      rank: i + 1 + boostedPosts.length,
+    }));
+
+    const topPosts = [...boostedPosts, ...mockPosts].slice(0, 20);
+
+    const topReviewers = Array.from({ length: 10 }, (_, i) => ({
+      id: `reviewer-${i}`,
+      address: `0x${Math.random().toString(16).slice(2, 42)}`,
+      score: 200 - i * 10,
+      rank: i + 1,
+    }));
+
+    leaderboardCache = {
+      topProfiles,
+      topPosts,
+      topReviewers,
+      lastUpdated: Date.now(),
+    };
+    cacheTimestamp = Date.now();
+
+    return NextResponse.json(leaderboardCache);
+  } catch (error) {
+    console.error("[API] Error generating leaderboard:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch leaderboard" },
+      { status: 500 }
+    );
   }
 }

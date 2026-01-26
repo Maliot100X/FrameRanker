@@ -51,7 +51,7 @@ const walletConnectors = connectorsForWallets(
     },
   ],
   {
-    appName: "ReviewMe",
+    appName: "FrameRanker",
     projectId,
   }
 );

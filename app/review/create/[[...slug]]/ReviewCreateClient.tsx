@@ -346,17 +346,19 @@ export default function ReviewCreateClient() {
         // Get leaderboard data (uses 10-minute server cache)
         const leaderboardData = await getLeaderboardData();
 
-        if (leaderboardData.topReviewees.length === 0) {
+        if (leaderboardData.topProfiles.length === 0) {
           setRecentReviewees([]);
           return;
         }
 
-        // Shuffle and pick random 10 from top reviewees
-        const shuffled = [...leaderboardData.topReviewees]
+        // Shuffle and pick random 10 from top profiles
+        const shuffled = [...leaderboardData.topProfiles]
           .sort(() => Math.random() - 0.5)
           .slice(0, 10);
 
-        const revieweeAddresses = shuffled.map((entry) => entry.address);
+        const revieweeAddresses = shuffled
+          .map((entry) => entry.address)
+          .filter((addr): addr is string => !!addr);
 
         // Fetch profiles in batch (single API call)
         const profiles = await fetchProfilesByWallets(revieweeAddresses);

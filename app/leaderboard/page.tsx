@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trophy, TrendingUp, Medal, Loader2, RefreshCw } from "lucide-react";
+import { Trophy, TrendingUp, Medal, Loader2, RefreshCw, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   getLeaderboardData,
   getLeaderboardAddresses,
@@ -12,13 +13,13 @@ import {
 import { useProfiles } from "@/lib/hooks/useNeynar";
 import { formatAddress } from "@/lib/neynar";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function LeaderboardPage() {
-  const [activeTab, setActiveTab] = useState<"reviewers" | "reviewees">(
-    "reviewees"
-  );
+  const [activeTab, setActiveTab] = useState<"profiles" | "posts" | "reviewers">("profiles");
+  const [topProfiles, setTopProfiles] = useState<LeaderboardEntry[]>([]);
+  const [topPosts, setTopPosts] = useState<LeaderboardEntry[]>([]);
   const [topReviewers, setTopReviewers] = useState<LeaderboardEntry[]>([]);
-  const [topReviewees, setTopReviewees] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number>(0);
@@ -39,8 +40,9 @@ export default function LeaderboardPage() {
     try {
       const data = await getLeaderboardData(forceRefresh);
 
+      setTopProfiles(data.topProfiles);
+      setTopPosts(data.topPosts);
       setTopReviewers(data.topReviewers);
-      setTopReviewees(data.topReviewees);
       setLastUpdated(data.lastUpdated);
 
       // Get all unique addresses for profile fetching
@@ -69,6 +71,7 @@ export default function LeaderboardPage() {
     if (!profiles) return entries;
 
     return entries.map((entry) => {
+      if (!entry.address) return entry;
       const profile = profiles[entry.address.toLowerCase()];
       return {
         ...entry,
@@ -78,10 +81,20 @@ export default function LeaderboardPage() {
     });
   };
 
-  const currentData =
-    activeTab === "reviewers"
-      ? enrichWithProfiles(topReviewers)
-      : enrichWithProfiles(topReviewees);
+  const getCurrentData = () => {
+    switch (activeTab) {
+      case "profiles":
+        return enrichWithProfiles(topProfiles);
+      case "posts":
+        return topPosts; // Posts don't need profile enrichment in the same way, or handled differently
+      case "reviewers":
+        return enrichWithProfiles(topReviewers);
+      default:
+        return [];
+    }
+  };
+
+  const currentData = getCurrentData();
 
   // Get medal emoji for top 3
   const getMedalEmoji = (rank: number) => {
@@ -100,190 +113,144 @@ export default function LeaderboardPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center gap-4"
         >
-          <Trophy className="w-12 h-12 text-yellow-400" />
-          <h1
-            className="text-white text-3xl font-bold"
-            style={{ fontFamily: "'Poetsen One', cursive" }}
-          >
-            Leaderboard
-          </h1>
-          <p className="text-gray-400 text-sm max-w-md">
-            Top contributors based on the last 1000 reviews
-          </p>
-
-          {/* Refresh Button */}
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="bg-gray-800 hover:bg-gray-700 text-white rounded-xl px-4 py-2 text-sm"
-          >
-            {refreshing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Refreshing...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
-              </>
-            )}
-          </Button>
-
-          {lastUpdated > 0 && (
-            <p className="text-gray-500 text-xs">
-              Last updated: {new Date(lastUpdated).toLocaleTimeString()}
-            </p>
-          )}
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+            <Trophy className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Leaderboard</h1>
+            <p className="text-gray-400">Top performers on FrameRanker</p>
+          </div>
         </motion.div>
-      </div>
 
-      {/* Tabs */}
-      <div className="px-6 mb-6">
-        <div className="flex gap-2 bg-gray-800/50 rounded-xl p-1 max-w-md mx-auto">
+        {/* Tabs */}
+        <div className="flex p-1 bg-gray-800/50 rounded-xl mt-8 border border-gray-700/50">
           <button
-            onClick={() => setActiveTab("reviewees")}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
-              activeTab === "reviewees"
-                ? "bg-pink-500 text-white"
+            onClick={() => setActiveTab("profiles")}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === "profiles"
+                ? "bg-gray-700 text-white shadow-sm"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            <Medal className="w-4 h-4 inline mr-2" />
-            Top Reviewees
+            Profiles
+          </button>
+          <button
+            onClick={() => setActiveTab("posts")}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              activeTab === "posts"
+                ? "bg-gray-700 text-white shadow-sm"
+                : "text-gray-400 hover:text-white"
+            }`}
+          >
+            Posts
           </button>
           <button
             onClick={() => setActiveTab("reviewers")}
-            className={`flex-1 py-3 px-4 rounded-lg text-sm font-semibold transition-all ${
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
               activeTab === "reviewers"
-                ? "bg-pink-500 text-white"
+                ? "bg-gray-700 text-white shadow-sm"
                 : "text-gray-400 hover:text-white"
             }`}
           >
-            <TrendingUp className="w-4 h-4 inline mr-2" />
-            Top Reviewers
+            Reviewers
           </button>
         </div>
       </div>
 
-      {/* Leaderboard List */}
-      <div className="px-6 max-w-2xl mx-auto">
-        {error ? (
+      {/* List */}
+      <div className="px-4 max-w-2xl mx-auto space-y-3">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-pink-500 animate-spin mb-4" />
+            <p className="text-gray-400">Loading rankings...</p>
+          </div>
+        ) : error ? (
           <div className="text-center py-12">
             <p className="text-red-400 mb-4">{error}</p>
-            <Button
-              onClick={() => {
-                setError("");
-                loadLeaderboard(true);
-              }}
-              className="bg-pink-500"
-            >
-              Retry
+            <Button onClick={() => loadLeaderboard(true)} variant="outline">
+              Try Again
             </Button>
           </div>
-        ) : loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-4">
-            <Loader2 className="w-8 h-8 text-pink-400 animate-spin" />
-            <p className="text-gray-400">Loading leaderboard...</p>
-          </div>
-        ) : currentData.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            No data available yet
-          </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-3"
-          >
-            {currentData.map((entry, index) => {
-              const medal = getMedalEmoji(index);
-
-              return (
-                <motion.div
-                  key={entry.address}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className={`bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border ${
-                    index < 3
-                      ? "border-yellow-500/30 shadow-lg shadow-yellow-500/10"
-                      : "border-gray-700/50"
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Rank */}
-                    <div className="flex-shrink-0 w-12 text-center">
-                      {medal ? (
-                        <span className="text-3xl">{medal}</span>
-                      ) : (
-                        <span className="text-gray-400 font-bold text-lg">
-                          #{index + 1}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Profile Image */}
-                    <div className="flex-shrink-0">
-                      {profilesLoading ? (
-                        <div className="w-12 h-12 rounded-full bg-gray-700 animate-pulse" />
-                      ) : entry.pfpUrl ? (
-                        <img
-                          src={entry.pfpUrl}
-                          alt={entry.username || "User"}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-purple-500" />
-                      )}
-                    </div>
-
-                    {/* User Info */}
-                    <div className="flex-1 min-w-0">
-                      {profilesLoading ? (
-                        <div className="h-5 bg-gray-700 rounded animate-pulse w-24" />
-                      ) : entry.username ? (
-                        <Link
-                          href={`/user/${entry.address}`}
-                          className="text-white font-semibold hover:text-pink-400 transition-colors block truncate"
-                        >
-                          @{entry.username}
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/user/${entry.address}`}
-                          className="text-gray-400 text-sm hover:text-pink-400 transition-colors block truncate"
-                        >
-                          {formatAddress(entry.address as `0x${string}`)}
-                        </Link>
-                      )}
-                    </div>
-
-                    {/* Count */}
-                    <div className="flex-shrink-0 text-right">
-                      <div className="text-2xl font-bold text-white">
-                        {entry.count}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {activeTab === "reviewers" ? "reviews" : "received"}
-                      </div>
-                    </div>
+          <div className="space-y-3">
+            {currentData.map((entry, index) => (
+              <motion.div
+                key={entry.id || index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <Card className="p-4 flex items-center gap-4 bg-gray-900/50 border-gray-800 hover:border-pink-500/30 transition-colors">
+                  <div className="w-8 text-center font-bold text-lg text-gray-500">
+                    {getMedalEmoji(index) || `#${index + 1}`}
                   </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
+                  
+                  {activeTab === "posts" ? (
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                         <div className="w-8 h-8 rounded bg-gray-700 flex-shrink-0" />
+                         <div className="truncate text-sm text-blue-400">{entry.url}</div>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Zap className="w-3 h-3 text-yellow-500" />
+                        <span>Score: {entry.score}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        {entry.pfpUrl ? (
+                          <Image
+                            src={entry.pfpUrl}
+                            alt={entry.username || "User"}
+                            width={40}
+                            height={40}
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
+                            <span className="text-xs">?</span>
+                          </div>
+                        )}
+                        {index < 3 && (
+                          <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center text-[10px] text-black font-bold border border-gray-900">
+                            ★
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-white truncate">
+                          {entry.username ? `@${entry.username}` : formatAddress(entry.address || "")}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-gray-400">
+                          <Zap className="w-3 h-3 text-yellow-500" />
+                          <span>Score: {entry.score}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <Button variant="ghost" size="sm" className="ml-auto text-pink-400 hover:text-pink-300">
+                    View
+                  </Button>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
         )}
       </div>
-
-      {/* Info */}
-      <div className="px-6 mt-8 max-w-2xl mx-auto">
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-          <p className="text-blue-400 text-sm text-center">
-            📊 Rankings are based on the most recent 5,000 reviews and update
-            every 10 minutes
-          </p>
-        </div>
+      
+      {/* Last Updated */}
+      <div className="text-center mt-8 text-xs text-gray-500 flex items-center justify-center gap-2">
+        <span>Updated {new Date(lastUpdated).toLocaleTimeString()}</span>
+        <button 
+          onClick={handleRefresh} 
+          disabled={refreshing}
+          className={refreshing ? "animate-spin" : ""}
+        >
+          <RefreshCw className="w-3 h-3" />
+        </button>
       </div>
     </div>
   );

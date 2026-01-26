@@ -11,23 +11,164 @@ datasource db {
 }
 
 model User {
-  id                Int      @id @default(autoincrement())
+  id                String   @id @default(uuid())
   fid               Int      @unique
+  username          String?
+  displayName       String?
+  pfpUrl            String?
+  walletAddress     String?
   notificationToken String?
   notificationUrl   String?
+  
+  // Relations
+  reviewsGiven      Review[] @relation("Reviewer")
+  reviewsReceived   Review[] @relation("ReviewTarget")
+  posts             Post[]
+  boosts            Boost[]
+  payments          Payment[]
+  subscription      Subscription?
+  wonGiveaways      GiveawayWinner[]
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@index([fid])
+  @@index([username])
+}
+
+model Post {
+  id          String   @id @default(uuid())
+  url         String   @unique
+  hash        String?
+  authorFid   Int
+  
+  // Relations
+  author      User     @relation(fields: [authorFid], references: [fid])
+  boosts      Boost[]
+  reviews     Review[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([url])
+  @@index([authorFid])
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  reviewerFid Int
+  targetFid   Int?
+  targetPostId String?
+  content     String
+  rating      Int
+  
+  // Relations
+  reviewer    User     @relation("Reviewer", fields: [reviewerFid], references: [fid])
+  targetUser  User?    @relation("ReviewTarget", fields: [targetFid], references: [fid])
+  targetPost  Post?    @relation(fields: [targetPostId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([reviewerFid])
+  @@index([targetFid])
+}
+
+model Boost {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // "PROFILE", "POST", "COIN"
+  targetPostId String?
+  coinType    String?  // "BASE", "ZORA", "APP_TOKEN"
+  
+  startTime   DateTime
+  endTime     DateTime
+  status      String   // "PENDING", "ACTIVE", "EXPIRED"
+  paymentId   String   @unique
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  post        Post?    @relation(fields: [targetPostId], references: [id])
+  payment     Payment  @relation(fields: [paymentId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([endTime])
+}
+
+model Payment {
+  id          String   @id @default(uuid())
+  userId      String
+  txHash      String   @unique
+  amount      Decimal
+  currency    String
+  status      String   // "PENDING", "COMPLETED", "FAILED"
+  purpose     String   // "BOOST_1H", "BOOST_5H", "BOOST_24H", "SUBSCRIPTION"
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  boost       Boost?
+  subscription Subscription?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Subscription {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  status      String   // "ACTIVE", "EXPIRED", "TRIAL"
+  tier        String   // "BASIC", "PRO", "PRO_TRIAL"
+  startDate   DateTime
+  endDate     DateTime
+  paymentId   String?  @unique
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  payment     Payment? @relation(fields: [paymentId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model NotificationLog {
   id             Int      @id @default(autoincrement())
   notificationId String   @unique
-  reviewId       Int?     @unique
+  reviewId       String?  @unique
   receivedCount  Int      @default(0)
   sentAt         DateTime @default(now())
 
   @@index([sentAt])
   @@index([reviewId])
+}
+
+model LeaderboardSnapshot {
+  id          String   @id @default(uuid())
+  type        String   // "PROFILE", "POST", "REVIEWER"
+  snapshotAt  DateTime @default(now())
+  
+  // JSON data for the ranked list at this point in time
+  // Array of { id, score, rank, ... }
+  data        Json
+
+  @@index([type, snapshotAt])
+}
+
+model GiveawayWinner {
+  id          String   @id @default(uuid())
+  userId      String
+  weekStart   DateTime // Start date of the week won
+  rank        Int      // 1, 2, 3
+  prize       String   // "50 USDC", "25 USDC + Boost", etc.
+  status      String   // "PENDING", "PAID"
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([weekStart])
 }

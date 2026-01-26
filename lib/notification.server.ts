@@ -126,7 +126,7 @@ export async function sendNotificationsToAllUsers(params: {
  * Send notification for a new review
  */
 export async function notifyReviewReceived(params: {
-  reviewId: number;
+  reviewId: string;
   revieweeFid: number;
   reviewerUsername: string;
   emoji: string;

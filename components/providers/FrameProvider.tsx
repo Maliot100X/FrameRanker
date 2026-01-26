@@ -4,14 +4,23 @@ import { useEffect, useState, useCallback } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
 import React from "react";
 
+interface User {
+  fid: number;
+  username?: string;
+  displayName?: string;
+  pfpUrl?: string;
+}
+
 interface FrameContextType {
   isSDKLoaded: boolean;
+  user: User | null;
   openUrl: (url: string) => Promise<void>;
   close: () => Promise<void>;
   isAppAdded: boolean;
   hasNotifications: boolean;
   requestAddApp: () => Promise<void>;
   requestNotifications: () => Promise<void>;
+  sync: () => Promise<void>;
 }
 
 const FrameContext = React.createContext<FrameContextType | undefined>(undefined);
@@ -28,6 +37,7 @@ function useFrameInternal() {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [isAppAdded, setIsAppAdded] = useState(false);
   const [hasNotifications, setHasNotifications] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   // SDK actions only work in mini app clients, so this pattern supports browser actions as well
   const openUrl = useCallback(async (url: string) => {
@@ -52,9 +62,20 @@ function useFrameInternal() {
   const checkContext = useCallback(async () => {
     try {
       const context = await sdk.context;
-      if (context?.client) {
-        setIsAppAdded(context.client.added || false);
-        setHasNotifications(!!context.client.notificationDetails);
+      if (context) {
+        if (context.user) {
+          setUser({
+            fid: context.user.fid,
+            username: context.user.username,
+            displayName: context.user.displayName,
+            pfpUrl: context.user.pfpUrl,
+          });
+        }
+        
+        if (context.client) {
+          setIsAppAdded(context.client.added || false);
+          setHasNotifications(!!context.client.notificationDetails);
+        }
       }
     } catch (error) {
       console.error('Failed to check SDK context:', error);
@@ -143,12 +164,14 @@ function useFrameInternal() {
 
   return {
     isSDKLoaded,
+    user,
     openUrl,
     close,
     isAppAdded,
     hasNotifications,
     requestAddApp,
     requestNotifications,
+    sync: checkContext,
   };
 }
 
@@ -156,7 +179,14 @@ export function FrameProvider({ children }: { children: React.ReactNode }) {
   const frameContext = useFrameInternal();
 
   if (!frameContext.isSDKLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white">
+        <div className="flex flex-col items-center gap-4">
+           <div className="w-12 h-12 rounded-full border-4 border-pink-500 border-t-transparent animate-spin"></div>
+           <p className="font-semibold">Loading FrameRanker...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -165,4 +195,3 @@ export function FrameProvider({ children }: { children: React.ReactNode }) {
     </FrameContext.Provider>
   );
 }
-

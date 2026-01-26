@@ -4,21 +4,24 @@
  */
 
 export interface LeaderboardEntry {
-  address: string;
-  count: number;
+  id: string; // address or post url or whatever unique id
+  address?: string; // for profiles/reviewers
+  url?: string; // for posts
+  score: number;
   username?: string;
   pfpUrl?: string;
+  rank?: number;
 }
 
 export interface LeaderboardData {
+  topProfiles: LeaderboardEntry[];
+  topPosts: LeaderboardEntry[];
   topReviewers: LeaderboardEntry[];
-  topReviewees: LeaderboardEntry[];
   lastUpdated: number;
 }
 
 /**
  * Get leaderboard data from server-side API
- * Server handles fetching 1000 reviews, aggregation, and 10-minute caching
  */
 export async function getLeaderboardData(forceRefresh = false): Promise<LeaderboardData> {
   try {
@@ -39,8 +42,9 @@ export async function getLeaderboardData(forceRefresh = false): Promise<Leaderbo
     
     // Return empty data on error
     return {
+      topProfiles: [],
+      topPosts: [],
       topReviewers: [],
-      topReviewees: [],
       lastUpdated: 0
     };
   }
@@ -53,9 +57,9 @@ export async function getLeaderboardData(forceRefresh = false): Promise<Leaderbo
 export function getLeaderboardAddresses(data: LeaderboardData): string[] {
   const addresses = new Set<string>();
   
-  data.topReviewers.forEach(entry => addresses.add(entry.address.toLowerCase()));
-  data.topReviewees.forEach(entry => addresses.add(entry.address.toLowerCase()));
+  data.topProfiles.forEach(entry => entry.address && addresses.add(entry.address.toLowerCase()));
+  data.topReviewers.forEach(entry => entry.address && addresses.add(entry.address.toLowerCase()));
+  // Posts might have author addresses if we include them, but for now we stick to profiles/reviewers
   
   return Array.from(addresses);
 }
-

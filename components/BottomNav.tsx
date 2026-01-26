@@ -2,17 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Trophy, User, Coins, Flame } from 'lucide-react';
+import { Home, Trophy, MoreHorizontal, Zap, Bot } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
   
   const navItems: { href: string; label: string; icon: typeof Home; isNew?: boolean }[] = [
     { href: '/', label: 'Home', icon: Home },
-    { href: '/streak', label: 'Streak', icon: Flame, isNew: true },
-    { href: '/token', label: '$RM', icon: Coins },
     { href: '/leaderboard', label: 'Rank', icon: Trophy },
-    { href: '/my-page', label: 'Me', icon: User },
+    { href: '/boost', label: 'Boost', icon: Zap },
+    { href: '/ai', label: 'AI', icon: Bot, isNew: true },
+    { href: '/more', label: 'More', icon: MoreHorizontal },
   ];
   
   const isActive = (href: string) => {

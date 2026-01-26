@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Image from 'next/image';
-import { Trophy, User, Plus, Coins, Flame, Dices } from 'lucide-react';
+import { Trophy, User, Plus, Zap, Bot, MoreHorizontal } from 'lucide-react';
+import { FarcasterSyncButton } from './FarcasterSyncButton';
 
 export function Header() {
   const pathname = usePathname();
@@ -21,57 +22,38 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-gray-900 backdrop-blur-lg border-b border-pink-500/10">
       <div className="px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="ReviewMe" width={32} height={32} className="rounded-sm" />
-          <h1 className="text-white text-lg font-semibold" style={{ fontFamily: "'Poetsen One', cursive" }}>ReviewMe</h1>
+          {/* <Image src="/logo.png" alt="FrameRanker" width={32} height={32} className="rounded-sm" /> */}
+          <div className="w-8 h-8 rounded-sm bg-gradient-to-br from-pink-500 to-purple-500 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-white" />
+          </div>
+          <h1 className="text-white text-lg font-semibold" style={{ fontFamily: "'Poetsen One', cursive" }}>FrameRanker</h1>
         </Link>
         
         <div className="flex items-center gap-3">
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-2">
             <Link 
-              href="/streak"
+              href="/boost"
               className={`relative flex items-center gap-2 px-3 py-2 h-10 rounded-lg transition-colors border ${
-                isActive('/streak')
+                isActive('/boost')
                   ? 'bg-pink-500/10 border-pink-500/30 text-pink-400'
                   : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              <div className="relative">
-                <Flame className="w-4 h-4" />
-                {!isActive('/streak') && (
-                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-pink-500 animate-warm-pulse"></span>
-                )}
-              </div>
-              <span className="text-sm font-medium">Streak</span>
+              <Zap className="w-4 h-4" />
+              <span className="text-sm font-medium">Boost</span>
             </Link>
             
             <Link 
-              href="/roulette"
+              href="/ai"
               className={`relative flex items-center gap-2 px-3 py-2 h-10 rounded-lg transition-colors border ${
-                isActive('/roulette')
+                isActive('/ai')
                   ? 'bg-pink-500/10 border-pink-500/30 text-pink-400'
                   : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              <div className="relative">
-                <Dices className="w-4 h-4" />
-                {!isActive('/roulette') && (
-                  <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-pink-500 animate-warm-pulse"></span>
-                )}
-              </div>
-              <span className="text-sm font-medium">Roulette</span>
-            </Link>
-            
-            <Link 
-              href="/token"
-              className={`flex items-center gap-2 px-3 py-2 h-10 rounded-lg transition-colors border ${
-                isActive('/token')
-                  ? 'bg-pink-500/10 border-pink-500/30 text-pink-400'
-                  : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700/50'
-              }`}
-            >
-              <Coins className="w-4 h-4" />
-              <span className="text-sm font-medium">$RM</span>
+              <Bot className="w-4 h-4" />
+              <span className="text-sm font-medium">AI</span>
             </Link>
             
             <Link 
@@ -87,15 +69,15 @@ export function Header() {
             </Link>
             
             <Link 
-              href="/my-page"
+              href="/more"
               className={`flex items-center gap-2 px-3 py-2 h-10 rounded-lg transition-colors border ${
-                isActive('/my-page')
+                isActive('/more')
                   ? 'bg-pink-500/10 border-pink-500/30 text-pink-400'
                   : 'bg-gray-800/50 border-gray-700/50 text-gray-400 hover:text-white hover:bg-gray-700/50'
               }`}
             >
-              <User className="w-4 h-4" />
-              <span className="text-sm font-medium">My Page</span>
+              <MoreHorizontal className="w-4 h-4" />
+              <span className="text-sm font-medium">More</span>
             </Link>
           </nav>
           
@@ -111,6 +93,8 @@ export function Header() {
           >
             <Plus className="w-5 h-5" />
           </Link>
+          
+          <FarcasterSyncButton />
           
           {/* Custom Connect Button */}
           <ConnectButton.Custom>

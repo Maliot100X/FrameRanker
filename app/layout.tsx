@@ -4,7 +4,6 @@ import "./globals.css";
 import { Providers } from "./providers";
 import { Header } from "@/components/Header";
 import { BottomNav } from "@/components/BottomNav";
-import { FloatingRouletteButton } from "@/components/FloatingRouletteButton";
 import { NotificationModal } from "@/components/NotificationModal";
 import { Footer } from "@/components/Footer";
 
@@ -40,7 +39,6 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <Footer />
             <BottomNav />
-            <FloatingRouletteButton />
             <NotificationModal />
           </div>
         </Providers>
