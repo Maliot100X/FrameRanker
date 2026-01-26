@@ -1,7 +1,7 @@
 'use client';
 
 import { useAccount } from 'wagmi';
-import { User, Settings, CreditCard, Activity, Zap, Star, RefreshCw } from 'lucide-react';
+import { User, Settings, CreditCard, Activity, Zap, Star, RefreshCw, Gift, BarChart3, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useProfile } from '@/lib/hooks/useNeynar';
 import { useFrame } from '@/components/providers/FrameProvider';
@@ -92,6 +92,24 @@ export default function MorePage() {
           <Link href="/more/subscription">
             <CreditCard className="mr-3 w-5 h-5 text-green-400" /> 
             Subscription
+          </Link>
+        </Button>
+        <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>
+          <Link href="/more/giveaways">
+            <Gift className="mr-3 w-5 h-5 text-pink-500" /> 
+            Giveaways
+          </Link>
+        </Button>
+        <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>
+          <Link href="/more/analytics">
+            <BarChart3 className="mr-3 w-5 h-5 text-blue-500" /> 
+            Analytics
+          </Link>
+        </Button>
+        <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>
+          <Link href="/more/docs">
+            <BookOpen className="mr-3 w-5 h-5 text-gray-300" /> 
+            How it Works
           </Link>
         </Button>
         <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>

@@ -1,176 +1,192 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAccount, useSendTransaction } from "wagmi";
 import { parseEther } from "viem";
-import { Loader2, Bot, Sparkles, Zap } from "lucide-react";
+import { Loader2, Bot, Send, Sparkles, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useFrame } from "@/components/providers/FrameProvider";
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xYourTreasuryAddressHere";
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  action?: {
+    type: "BOOST" | "REVIEW";
+    label: string;
+    price: string;
+    description: string;
+  };
+}
 
-const ACTIONS = {
-  ANALYZE: { price: "0.00008", label: "$0.20", id: "analyze" },
-  REVIEW: { price: "0.00012", label: "$0.30", id: "review" },
-};
+const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xYourTreasuryAddressHere";
 
 export default function AIPage() {
   const { isConnected, address } = useAccount();
   const { user } = useFrame();
-  const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [generatedReview, setGeneratedReview] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content: "Hello! I'm your FrameRanker AI Assistant. I can help you analyze your profile, suggest the best boosting strategy, or generate reviews. How can I help you today?",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { sendTransactionAsync } = useSendTransaction();
 
-  const handleAIAction = async (actionId: "analyze" | "review") => {
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMessage = input;
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userMessage,
+          fid: user?.fid,
+          username: user?.username,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to get AI response");
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: data.message,
+          action: data.action,
+        },
+      ]);
+    } catch (error) {
+      console.error("AI Chat error:", error);
+      toast.error("Failed to get response from AI");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAction = async (action: NonNullable<Message["action"]>) => {
     if (!isConnected) {
       toast.error("Please connect your wallet first");
       return;
     }
 
-    setIsProcessing(actionId);
-    const action = actionId === "analyze" ? ACTIONS.ANALYZE : ACTIONS.REVIEW;
-
     try {
-      // 1. Send Payment
       const hash = await sendTransactionAsync({
         to: PAYMENT_RECEIVER as `0x${string}`,
         value: parseEther(action.price),
       });
 
-      toast.info("Payment sent! AI is thinking...");
-
-      // 2. Call API
-      const response = await fetch("/api/ai", {
+      toast.success("Payment sent! Processing action...");
+      
+      // Notify backend about the action
+      await fetch("/api/ai/action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: actionId,
+          type: action.type,
           txHash: hash,
-          address,
           fid: user?.fid,
         }),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) throw new Error(data.error || "AI action failed");
-
-      if (actionId === "analyze") {
-        setAnalysis(data.result);
-        toast.success("Profile analysis complete!");
-      } else {
-        setGeneratedReview(data.result);
-        toast.success("Review generated!");
-      }
-
+      toast.success("Action completed successfully!");
     } catch (error) {
-      console.error("AI Action failed:", error);
-      toast.error("AI Action failed. Please try again.");
-    } finally {
-      setIsProcessing(null);
+      console.error("Action failed:", error);
+      toast.error("Action failed or was rejected");
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 mb-20">
-      <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
-        <Bot className="w-8 h-8 text-blue-400" />
-        AI Assistant
-      </h1>
-      
-      <div className="grid gap-6">
-        <Card className="p-6 bg-gray-900/50 backdrop-blur border-blue-500/20">
-          <div className="flex flex-col items-center text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-400" />
-            </div>
-            <h2 className="text-xl font-semibold">Smart Ranking Assistant</h2>
-            <p className="text-gray-400 text-sm">
-              Let AI analyze your profile and content to suggest the best boosting strategy.
-            </p>
-            
-            <div className="w-full space-y-3 pt-4">
-              <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700 relative overflow-hidden group"
-                onClick={() => handleAIAction("analyze")}
-                disabled={!!isProcessing}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                {isProcessing === "analyze" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Analyze My Profile ({ACTIONS.ANALYZE.label})
-              </Button>
-              
-              <Button 
-                className="w-full bg-purple-600 hover:bg-purple-700 relative overflow-hidden group"
-                onClick={() => handleAIAction("review")}
-                disabled={!!isProcessing}
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
-                {isProcessing === "review" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                Generate Review ({ACTIONS.REVIEW.label})
-              </Button>
+    <div className="flex flex-col h-[calc(100vh-80px)]">
+      <div className="p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur z-10">
+        <h1 className="text-xl font-bold flex items-center gap-2">
+          <Bot className="w-6 h-6 text-blue-400" />
+          AI Assistant
+        </h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg, idx) => (
+          <div
+            key={idx}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-3 ${
+                msg.role === "user"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-800 text-gray-100"
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                {msg.role === "assistant" && <Bot className="w-4 h-4 mt-1 shrink-0 text-blue-400" />}
+                <div>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {msg.action && (
+                    <div className="mt-3 p-3 bg-gray-900/50 rounded border border-blue-500/30">
+                      <p className="font-semibold text-sm mb-1">{msg.action.description}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs text-gray-400">Cost: {msg.action.price} ETH</span>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleAction(msg.action!)}
+                          className="bg-blue-500 hover:bg-blue-600 text-xs h-8"
+                        >
+                          Confirm & Pay
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </Card>
-
-        {/* Results Section */}
-        {(analysis || generatedReview) && (
-          <Card className="p-6 border-green-500/20 bg-gray-900/50 backdrop-blur animate-in fade-in slide-in-from-bottom-4">
-            <h3 className="font-semibold mb-4 text-green-400 flex items-center gap-2">
-              <Zap className="w-4 h-4" /> AI Results
-            </h3>
-            
-            {analysis && (
-              <div className="space-y-4 mb-6">
-                <div className="p-3 rounded bg-gray-800/50 border border-gray-700">
-                  <div className="text-sm text-gray-400">Profile Score</div>
-                  <div className="text-2xl font-bold text-white">{analysis.score}/100</div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-300">Strategy Suggestion:</p>
-                  <p className="text-sm text-gray-400 italic">{analysis.suggestion}</p>
-                </div>
-              </div>
-            )}
-
-            {generatedReview && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-300">Generated Review:</p>
-                <div className="p-4 rounded bg-gray-800/50 border border-gray-700 text-sm text-gray-300 italic">
-                  "{generatedReview}"
-                </div>
-                <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => {
-                  navigator.clipboard.writeText(generatedReview);
-                  toast.success("Copied to clipboard!");
-                }}>
-                  Copy Review
-                </Button>
-              </div>
-            )}
-          </Card>
+        ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-800 rounded-lg p-3 flex items-center gap-2">
+              <Bot className="w-4 h-4 text-blue-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            </div>
+          </div>
         )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        <Card className="p-6">
-          <h3 className="font-semibold mb-4">Stats Overview</h3>
-          <div className="space-y-2 text-sm text-gray-400">
-            <div className="flex justify-between">
-              <span>Profile Score</span>
-              <span className="text-white">{analysis ? analysis.score : "--"}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Engagement Rate</span>
-              <span className="text-white">{analysis ? analysis.engagement : "--"}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Recommended Boost</span>
-              <span className="text-white">{analysis ? analysis.recommendedBoost : "--"}</span>
-            </div>
-          </div>
-        </Card>
+      <div className="p-4 border-t border-gray-800 bg-gray-900/50 backdrop-blur">
+        <div className="flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Ask about ranking, boosts, or request a review..."
+            className="bg-gray-800 border-gray-700"
+            disabled={isLoading}
+          />
+          <Button onClick={handleSend} disabled={isLoading || !input.trim()}>
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
     </div>
   );
