@@ -1,29 +1,29 @@
 {
   "accountAssociation": {
-    "header": "YOUR_HEADER_HERE",
-    "payload": "YOUR_PAYLOAD_HERE",
-    "signature": "YOUR_SIGNATURE_HERE"
+    "header": "eyJmaWQiOjE2ODksInR5cGUiOiJjdXN0b2RpYSIsImtleSI6IjB4Y2NkMWUwOTk1OTBiZmVkZjI3OWUyMzk1NTg3NzJiYmI1MDkwMmVmNiJ9",
+    "payload": "eyJkb21haW4iOiJmcmFtZS1yYW5rZXIudmVyY2VsLmFwcCJ9",
+    "signature": "MOCK_SIGNATURE_FOR_NOW_REPLACE_WITH_REAL_ONE"
   },
   "miniapp": {
     "version": "1",
-    "name": "Your App Name",
-    "homeUrl": "https://your-domain.com",
-    "webhookUrl": "https://your-domain.com/api/farcaster/webhook",
-    "iconUrl": "https://your-domain.com/app-icon.png",
-    "splashImageUrl": "https://your-domain.com/splash-image.png",
-    "splashBackgroundColor": "#ec4899",
-    "subtitle": "Your App Subtitle",
-    "description": "Your app description here.",
+    "name": "FrameRanker",
+    "homeUrl": "https://frame-ranker.vercel.app",
+    "webhookUrl": "https://frame-ranker.vercel.app/api/farcaster/webhook",
+    "iconUrl": "https://frame-ranker.vercel.app/icon.png",
+    "splashImageUrl": "https://frame-ranker.vercel.app/splash-image.png",
+    "splashBackgroundColor": "#7c3aed",
+    "subtitle": "Boost your Farcaster visibility",
+    "description": "The ultimate tool to boost your profile and casts on Farcaster.",
     "primaryCategory": "social",
-    "tags": ["your", "tags", "here"],
-    "heroImageUrl": "https://your-domain.com/hero-image.png",
-    "tagline": "Your Tagline",
-    "ogTitle": "Your App Name",
-    "ogDescription": "Your OG description here.",
-    "ogImageUrl": "https://your-domain.com/og-image.png",
-    "castShareUrl": "https://your-domain.com"
+    "tags": ["farcaster", "boost", "rank", "analytics"],
+    "heroImageUrl": "https://frame-ranker.vercel.app/hero-image.png",
+    "tagline": "Rank Higher, Reach Further",
+    "ogTitle": "FrameRanker",
+    "ogDescription": "Boost your visibility and rank higher on Farcaster.",
+    "ogImageUrl": "https://frame-ranker.vercel.app/og-image.png",
+    "castShareUrl": "https://frame-ranker.vercel.app"
   },
   "baseBuilder": {
-    "ownerAddress": "YOUR_WALLET_ADDRESS"
+    "ownerAddress": "0xccd1e099590bfedf279e239558772bbb50902ef6"
   }
 }

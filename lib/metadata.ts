@@ -1,46 +1,46 @@
 import { Metadata } from "next";
 
 export const DEFAULT_METADATA: Metadata = {
-  title: "ReviewMe - Onchain Reviews for Real People",
+  title: "FrameRanker - Farcaster Mini App",
   description:
-    "Write heartfelt reviews about people you know on Base. More reviews, more demand for $RM.",
+    "Boost your visibility, rank higher, and gain insights on Farcaster.",
   icons: {
     icon: "/icon.png",
   },
   openGraph: {
-    title: "ReviewMe - Onchain Reviews for Real People",
+    title: "FrameRanker - Farcaster Mini App",
     description:
-      "Write heartfelt reviews about people you know on Base. More reviews, more demand for $RM.",
+      "Boost your visibility, rank higher, and gain insights on Farcaster.",
     images: [
       {
-        url: "https://reviewme.fun/og-image.png",
+        url: "https://frame-ranker.vercel.app/og-image.png",
         width: 1200,
         height: 630,
-        alt: "ReviewMe - Onchain Reviews for Real People",
+        alt: "FrameRanker",
       },
     ],
-    siteName: "ReviewMe",
+    siteName: "FrameRanker",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ReviewMe - Onchain Reviews for Real People",
+    title: "FrameRanker - Farcaster Mini App",
     description:
-      "Write heartfelt reviews about people you know on Base. More reviews, more demand for $RM.",
-    images: ["https://reviewme.fun/og-image.png"],
+      "Boost your visibility, rank higher, and gain insights on Farcaster.",
+    images: ["https://frame-ranker.vercel.app/og-image.png"],
   },
   other: {
     "fc:miniapp": JSON.stringify({
       version: "1",
-      imageUrl: "https://reviewme.fun/og-image.png",
+      imageUrl: "https://frame-ranker.vercel.app/og-image.png",
       button: {
-        title: "Open ReviewMe",
+        title: "Open FrameRanker",
         action: {
           type: "launch_frame",
-          name: "ReviewMe",
-          url: "https://reviewme.fun",
-          splashImageUrl: "https://reviewme.fun/splash-image.png",
-          splashBackgroundColor: "#ec4899",
+          name: "FrameRanker",
+          url: "https://frame-ranker.vercel.app",
+          splashImageUrl: "https://frame-ranker.vercel.app/splash-image.png",
+          splashBackgroundColor: "#7c3aed",
         },
       },
     }),
@@ -63,19 +63,19 @@ export function constructMetadata({
   frameButtonTitle = "Open ReviewMe",
 }: GenerateMetadataProps = {}): Metadata {
   // Use environment variable for base URL, fallback to production URL
-  let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://reviewme.fun";
+  let baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || "https://frame-ranker.vercel.app";
 
   const fullUrl = path ? `${baseUrl}${path}` : baseUrl;
   const image = imageUrl || `${baseUrl}/og-image.png`;
 
   // Clean up title if it's passed (don't append suffix if it's the default title)
   const effectiveTitle = title
-    ? title.includes("| ReviewMe")
+    ? title.includes("| FrameRanker")
       ? title
-      : `${title} | ReviewMe`
-    : (DEFAULT_METADATA.title as string);
+      : `${title} | FrameRanker`
+    : "FrameRanker - Farcaster Mini App";
 
-  const effectiveDesc = description || (DEFAULT_METADATA.description as string);
+  const effectiveDesc = description || "Boost your visibility and rank higher on Farcaster.";
 
   return {
     ...DEFAULT_METADATA,
@@ -83,7 +83,7 @@ export function constructMetadata({
     description: effectiveDesc,
     openGraph: {
       ...DEFAULT_METADATA.openGraph,
-      title: title || (DEFAULT_METADATA.openGraph?.title as string),
+      title: title || effectiveTitle,
       description: effectiveDesc,
       url: fullUrl,
       images: [
@@ -91,13 +91,14 @@ export function constructMetadata({
           url: image,
           width: 1200,
           height: 630,
-          alt: title || "ReviewMe",
+          alt: title || "FrameRanker",
         },
       ],
+      siteName: "FrameRanker",
     },
     twitter: {
       ...DEFAULT_METADATA.twitter,
-      title: title || (DEFAULT_METADATA.twitter?.title as string),
+      title: title || effectiveTitle,
       description: effectiveDesc,
       images: [image],
     },
@@ -109,10 +110,10 @@ export function constructMetadata({
           title: frameButtonTitle,
           action: {
             type: "launch_frame",
-            name: "ReviewMe",
-            url: fullUrl,
+            name: "FrameRanker",
+            url: baseUrl,
             splashImageUrl: `${baseUrl}/splash-image.png`,
-            splashBackgroundColor: "#ec4899",
+            splashBackgroundColor: "#7c3aed",
           },
         },
       }),
