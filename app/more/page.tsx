@@ -8,6 +8,8 @@ import { useFrame } from '@/components/providers/FrameProvider';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import { FarcasterSyncButton } from '@/components/FarcasterSyncButton';
+
 export default function MorePage() {
   const { address, isConnected } = useAccount();
   const { user: frameUser } = useFrame();
@@ -60,12 +62,10 @@ export default function MorePage() {
         <h1 className="text-2xl font-bold">{displayUser?.username ? `@${displayUser.username}` : 'User'}</h1>
         <p className="text-gray-400 text-sm mb-2">{address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''}</p>
         
-        {/* Sync Button (if wallet connected but no profile found automatically) */}
-        {!displayUser && isConnected && (
-           <Button size="sm" variant="outline" className="mt-2 text-xs">
-             <RefreshCw className="w-3 h-3 mr-2" /> Sync Farcaster
-           </Button>
-        )}
+        {/* Sync Button */}
+        <div className="mt-2">
+            <FarcasterSyncButton />
+        </div>
       </div>
 
       {/* Menu */}

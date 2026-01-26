@@ -25,9 +25,28 @@ export default function BoostPage() {
   const [profileDuration, setProfileDuration] = useState<Duration>("1h");
   const [postDuration, setPostDuration] = useState<Duration>("1h");
   const [postUrl, setPostUrl] = useState("");
+  const [postPreview, setPostPreview] = useState<{ username: string, hash: string } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const { sendTransactionAsync } = useSendTransaction();
+
+  // Simple URL parser for preview
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setPostUrl(url);
+    
+    // Try to extract username and hash
+    // Format: https://warpcast.com/username/0xhash
+    const match = url.match(/warpcast\.com\/([^/]+)\/(0x[a-fA-F0-9]+)/);
+    if (match) {
+        setPostPreview({
+            username: match[1],
+            hash: match[2]
+        });
+    } else {
+        setPostPreview(null);
+    }
+  };
 
   const handleBoost = async (type: "profile" | "post") => {
     if (!isConnected) {
@@ -134,13 +153,26 @@ export default function BoostPage() {
           </p>
           
           <div className="space-y-4">
-            <Input 
-              placeholder="https://warpcast.com/..." 
-              className="bg-gray-800 border-gray-700"
+            <Input
+              placeholder="Paste Farcaster cast URL (e.g. https://warpcast.com/...)"
               value={postUrl}
-              onChange={(e) => setPostUrl(e.target.value)}
+              onChange={handleUrlChange}
+              className="bg-gray-800/50 border-gray-700"
             />
             
+            {postPreview && (
+                <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-purple-400">Cast</span>
+                    </div>
+                    <div className="overflow-hidden">
+                        <p className="text-sm font-medium text-purple-200">Boosting Cast</p>
+                        <p className="text-xs text-gray-400 truncate">by @{postPreview.username}</p>
+                        <p className="text-xs text-gray-500 truncate font-mono">{postPreview.hash}</p>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(PRICING) as Duration[]).map((d) => (
                 <Button 
