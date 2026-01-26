@@ -140,8 +140,21 @@ export default function AIPage() {
             >
               <div className="flex items-start gap-2">
                 {msg.role === "assistant" && <Bot className="w-4 h-4 mt-1 shrink-0 text-blue-400" />}
-                <div>
+                <div className="flex-1">
                   <p className="whitespace-pre-wrap">{msg.content}</p>
+                  
+                  {msg.role === "assistant" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-2 h-6 px-2 text-xs text-blue-300 hover:text-blue-200 hover:bg-blue-900/30"
+                      onClick={() => handleShare(msg.content)}
+                    >
+                      <Share className="w-3 h-3 mr-1" />
+                      Share
+                    </Button>
+                  )}
+
                   {msg.action && (
                     <div className="mt-3 p-3 bg-gray-900/50 rounded border border-blue-500/30">
                       <p className="font-semibold text-sm mb-1">{msg.action.description}</p>
