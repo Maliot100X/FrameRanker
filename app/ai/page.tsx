@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccount, useSendTransaction } from "wagmi";
 import { parseEther } from "viem";
-import { Loader2, Bot, Send, Sparkles, User as UserIcon } from "lucide-react";
+import { Loader2, Bot, Send, Sparkles, User as UserIcon, Share } from "lucide-react";
 import { toast } from "sonner";
 import { useFrame } from "@/components/providers/FrameProvider";
+import sdk from "@farcaster/frame-sdk";
 
 interface Message {
   role: "user" | "assistant";
@@ -45,6 +46,12 @@ export default function AIPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  const handleShare = (text: string) => {
+    const encodedText = encodeURIComponent(text);
+    const url = `https://warpcast.com/~/compose?text=${encodedText}`;
+    sdk.actions.openUrl(url);
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;

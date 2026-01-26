@@ -26,25 +26,61 @@ export default function BoostPage() {
   const [postDuration, setPostDuration] = useState<Duration>("1h");
   const [postUrl, setPostUrl] = useState("");
   const [postPreview, setPostPreview] = useState<{ username: string, hash: string } | null>(null);
+  const [postData, setPostData] = useState<{
+    hash: string;
+    author: {
+      fid: number;
+      username: string;
+      displayName: string;
+      profileImage: string;
+    };
+    text: string;
+    timestamp: string;
+    reactions: {
+      likes: number;
+      recasts: number;
+    };
+    embeds: any[];
+  } | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   const { sendTransactionAsync } = useSendTransaction();
 
-  // Simple URL parser for preview
-  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // URL parser and fetcher for preview
+  const handleUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     setPostUrl(url);
     
-    // Try to extract username and hash
     // Format: https://warpcast.com/username/0xhash
     const match = url.match(/warpcast\.com\/([^/]+)\/(0x[a-fA-F0-9]+)/);
+    
     if (match) {
         setPostPreview({
             username: match[1],
             hash: match[2]
         });
+        
+        // Fetch real data from Neynar via our API
+        setIsPreviewLoading(true);
+        try {
+          const res = await fetch(`/api/neynar/cast?url=${encodeURIComponent(url)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setPostData(data);
+          } else {
+            setPostData(null);
+            console.error("Failed to fetch cast preview");
+          }
+        } catch (err) {
+          console.error("Error fetching preview:", err);
+          setPostData(null);
+        } finally {
+          setIsPreviewLoading(false);
+        }
     } else {
         setPostPreview(null);
+        setPostData(null);
     }
   };
 
@@ -160,7 +196,29 @@ export default function BoostPage() {
               className="bg-gray-800/50 border-gray-700"
             />
             
-            {postPreview && (
+            {isPreviewLoading ? (
+                <div className="p-3 rounded-lg bg-gray-800/50 border border-gray-700 flex items-center justify-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-400">Loading cast preview...</span>
+                </div>
+            ) : postData ? (
+                <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                    <div className="flex items-center gap-2 mb-2">
+                        {postData.author.profileImage ? (
+                            <img src={postData.author.profileImage} alt={postData.author.username} className="w-6 h-6 rounded-full object-cover" />
+                        ) : (
+                            <div className="w-6 h-6 rounded-full bg-purple-500/20" />
+                        )}
+                        <span className="font-semibold text-sm text-purple-200">{postData.author.displayName}</span>
+                        <span className="text-xs text-gray-400">@{postData.author.username}</span>
+                    </div>
+                    <p className="text-sm text-gray-300 line-clamp-3 mb-2">{postData.text}</p>
+                    <div className="flex gap-4 text-xs text-gray-500">
+                        <span>❤️ {postData.reactions.likes}</span>
+                        <span>🔁 {postData.reactions.recasts}</span>
+                    </div>
+                </div>
+            ) : postPreview ? (
                 <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
                         <span className="text-xs font-bold text-purple-400">Cast</span>
@@ -171,7 +229,7 @@ export default function BoostPage() {
                         <p className="text-xs text-gray-500 truncate font-mono">{postPreview.hash}</p>
                     </div>
                 </div>
-            )}
+            ) : null}
 
             <div className="grid grid-cols-3 gap-2">
               {(Object.keys(PRICING) as Duration[]).map((d) => (

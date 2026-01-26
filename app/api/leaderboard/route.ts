@@ -93,31 +93,40 @@ export async function GET(request: NextRequest) {
         console.error("Failed to fetch post boosts:", e);
     }
 
-    // MOCK DATA GENERATION (Fallback/Fill)
-    const mockProfiles = Array.from({ length: 10 }, (_, i) => ({
-      id: `user-${i}`,
-      address: `0x${Math.random().toString(16).slice(2, 42)}`,
-      score: 1000 - i * 50,
-      rank: i + 1 + boostedProfiles.length,
-    }));
+    // 3. Fetch Top Reviewers (Real Data)
+    let topReviewers: LeaderboardEntry[] = [];
+    try {
+        const reviewers = await prisma.user.findMany({
+            orderBy: {
+                reviewsGiven: {
+                    _count: 'desc'
+                }
+            },
+            take: 10,
+            include: {
+                _count: {
+                    select: { reviewsGiven: true }
+                }
+            }
+        });
 
-    const topProfiles = [...boostedProfiles, ...mockProfiles].slice(0, 20);
+        topReviewers = reviewers.map((user, i) => ({
+            id: user.id,
+            address: user.walletAddress || undefined,
+            username: user.username || undefined,
+            pfpUrl: user.pfpUrl || undefined,
+            score: user._count.reviewsGiven * 10, // 10 points per review
+            rank: i + 1,
+        }));
+    } catch (e) {
+        console.error("Failed to fetch top reviewers:", e);
+    }
 
-    const mockPosts = Array.from({ length: 10 }, (_, i) => ({
-      id: `post-${i}`,
-      url: `https://warpcast.com/user${i}/0x${Math.random().toString(16).slice(2, 10)}`,
-      score: 500 - i * 20,
-      rank: i + 1 + boostedPosts.length,
-    }));
-
-    const topPosts = [...boostedPosts, ...mockPosts].slice(0, 20);
-
-    const topReviewers = Array.from({ length: 10 }, (_, i) => ({
-      id: `reviewer-${i}`,
-      address: `0x${Math.random().toString(16).slice(2, 42)}`,
-      score: 200 - i * 10,
-      rank: i + 1,
-    }));
+    // Combine data (Boosted profiles are top, followed by organic logic if implemented)
+    // For now, leaderboard is primarily boosted profiles + top reviewers
+    
+    const topProfiles = boostedProfiles; // + organic top profiles if implemented
+    const topPosts = boostedPosts; // + organic top posts if implemented
 
     leaderboardCache = {
       topProfiles,

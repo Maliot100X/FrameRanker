@@ -121,27 +121,4 @@ export default function MorePage() {
       </div>
     </div>
   );
-}          </Link>
-        </Button>
-        <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>
-          <Link href="/more/analytics">
-            <BarChart3 className="mr-3 w-5 h-5 text-blue-500" /> 
-            Analytics
-          </Link>
-        </Button>
-        <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>
-          <Link href="/more/docs">
-            <BookOpen className="mr-3 w-5 h-5 text-gray-300" /> 
-            How it Works
-          </Link>
-        </Button>
-        <Button variant="outline" className="w-full justify-start h-14 text-lg bg-gray-900/50 border-gray-800" asChild>
-          <Link href="/more/settings">
-            <Settings className="mr-3 w-5 h-5 text-gray-400" /> 
-            Settings
-          </Link>
-        </Button>
-      </div>
-    </div>
-  );
 }
