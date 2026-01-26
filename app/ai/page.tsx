@@ -9,7 +9,7 @@ import { parseEther } from "viem";
 import { Loader2, Bot, Send, Sparkles, User as UserIcon, Share } from "lucide-react";
 import { toast } from "sonner";
 import { useFrame } from "@/components/providers/FrameProvider";
-import sdk from "@farcaster/frame-sdk";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 interface Message {
   role: "user" | "assistant";
