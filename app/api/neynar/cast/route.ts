@@ -40,6 +40,9 @@ export async function GET(request: NextRequest) {
     )
 
     if (!response.ok) {
+      if (response.status === 404) {
+        return NextResponse.json({ error: 'Cast not found' }, { status: 404 })
+      }
       throw new Error(`Neynar API error: ${response.status}`)
     }
 
