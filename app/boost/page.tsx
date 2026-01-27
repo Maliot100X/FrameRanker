@@ -4,22 +4,35 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAccount, useSendTransaction } from "wagmi";
-import { parseEther, createPublicClient, http, parseAbi, formatUnits, isAddress } from "viem";
+import { useAccount, useSendTransaction, useWriteContract, useChainId, useSwitchChain } from "wagmi";
+import { parseEther, createPublicClient, http, parseAbi, formatUnits, isAddress, parseUnits, erc20Abi } from "viem";
 import { base } from "viem/chains";
 import { Loader2, Zap, TrendingUp, Coins, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useFrame } from "@/components/providers/FrameProvider";
+import { PAYMENT_TOKENS, type PaymentToken } from "@/config/tokens";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
+const PAYMENT_RECEIVER = "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
 // Placeholder or Real Zora Coin Contract Address
 const FRAME_RANKER_TOKEN = process.env.NEXT_PUBLIC_FRAME_RANKER_TOKEN_ADDRESS || "";
 
 type Duration = "1h" | "5h" | "24h";
-const PRICING: Record<Duration, { price: string; label: string }> = {
-  "1h": { price: "0.0004", label: "$1" },
-  "5h": { price: "0.0012", label: "$3" },
-  "24h": { price: "0.0024", label: "$6" },
+
+// Base prices in USD
+const USD_PRICES: Record<Duration, number> = {
+  "1h": 1,
+  "5h": 3,
+  "24h": 6,
+};
+
+// Pricing logic helper
+const getPrice = (duration: Duration, token: PaymentToken) => {
+  const usdPrice = USD_PRICES[duration];
+  if (token === 'ETH') return (usdPrice * 0.0003).toString(); // Approx conversion
+  if (token === 'USDC') return usdPrice.toString();
+  if (token === 'FRAME') return (usdPrice * 100).toString(); // Approx conversion
+  return "0";
 };
 
 type TabType = "profile" | "post" | "coin";
@@ -45,6 +58,7 @@ export default function BoostPage() {
   const [profileDuration, setProfileDuration] = useState<Duration>("1h");
   const [postDuration, setPostDuration] = useState<Duration>("1h");
   const [coinDuration, setCoinDuration] = useState<Duration>("1h");
+  const [selectedToken, setSelectedToken] = useState<PaymentToken>('ETH');
   
   const [postUrl, setPostUrl] = useState("");
   const [coinAddress, setCoinAddress] = useState("");
@@ -77,6 +91,9 @@ export default function BoostPage() {
   const [isCoinLoading, setIsCoinLoading] = useState(false);
 
   const { sendTransactionAsync } = useSendTransaction();
+  const { writeContractAsync } = useWriteContract();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   // Initialize with FrameRanker token if available
   useEffect(() => {
@@ -174,13 +191,36 @@ export default function BoostPage() {
 
     setIsProcessing(true);
     const duration = type === "profile" ? profileDuration : type === "post" ? postDuration : coinDuration;
-    const price = PRICING[duration].price;
+    const price = getPrice(duration, selectedToken);
+    const tokenInfo = PAYMENT_TOKENS[selectedToken];
+    const requiredChainId = tokenInfo.chainId || base.id;
+
+    // Check network
+    if (chainId !== requiredChainId) {
+        try {
+            await switchChain?.({ chainId: requiredChainId });
+        } catch (error) {
+            toast.error(`Please switch to ${requiredChainId === 7777777 ? 'Zora' : 'Base'} network`);
+            setIsProcessing(false);
+            return;
+        }
+    }
 
     try {
-      const hash = await sendTransactionAsync({
-        to: PAYMENT_RECEIVER as `0x${string}`,
-        value: parseEther(price),
-      });
+      let hash = "";
+      if (tokenInfo.isNative) {
+        hash = await sendTransactionAsync({
+            to: PAYMENT_RECEIVER as `0x${string}`,
+            value: parseEther(price),
+        });
+      } else {
+        hash = await writeContractAsync({
+            address: tokenInfo.address,
+            abi: erc20Abi,
+            functionName: 'transfer',
+            args: [PAYMENT_RECEIVER as `0x${string}`, parseUnits(price, tokenInfo.decimals)],
+        });
+      }
 
       toast.success("Payment sent! Processing boost...");
 
@@ -195,6 +235,7 @@ export default function BoostPage() {
           txHash: hash,
           target: type === "post" ? postUrl : type === "coin" ? coinAddress : undefined,
           fid: user?.fid,
+          currency: selectedToken
         }),
       });
 
@@ -258,7 +299,7 @@ export default function BoostPage() {
             </p>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
-                {(Object.keys(PRICING) as Duration[]).map((d) => (
+                {(Object.keys(USD_PRICES) as Duration[]).map((d) => (
                 <button
                     key={d}
                     onClick={() => setProfileDuration(d)}
@@ -269,7 +310,11 @@ export default function BoostPage() {
                     }`}
                 >
                     <div className="text-xl font-bold">{d}</div>
-                    <div className="text-sm text-gray-400">{PRICING[d].label}</div>
+                    <div className="text-sm text-gray-400">
+                        {selectedToken === 'ETH' && `~${USD_PRICES[d] * 0.0003} ETH`}
+                        {selectedToken === 'USDC' && `${USD_PRICES[d]} USDC`}
+                        {selectedToken === 'FRAME' && `${USD_PRICES[d] * 100} FRAME`}
+                    </div>
                 </button>
                 ))}
             </div>
@@ -285,7 +330,7 @@ export default function BoostPage() {
                     Processing...
                 </>
                 ) : (
-                `Boost for ${PRICING[profileDuration].label}`
+                `Boost Profile`
                 )}
             </Button>
             </Card>
@@ -342,7 +387,7 @@ export default function BoostPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
-                {(Object.keys(PRICING) as Duration[]).map((d) => (
+                {(Object.keys(USD_PRICES) as Duration[]).map((d) => (
                 <button
                     key={d}
                     onClick={() => setPostDuration(d)}
@@ -353,7 +398,11 @@ export default function BoostPage() {
                     }`}
                 >
                     <div className="text-xl font-bold">{d}</div>
-                    <div className="text-sm text-gray-400">{PRICING[d].label}</div>
+                    <div className="text-sm text-gray-400">
+                        {selectedToken === 'ETH' && `~${USD_PRICES[d] * 0.0003} ETH`}
+                        {selectedToken === 'USDC' && `${USD_PRICES[d]} USDC`}
+                        {selectedToken === 'FRAME' && `${USD_PRICES[d] * 100} FRAME`}
+                    </div>
                 </button>
                 ))}
             </div>
@@ -369,7 +418,7 @@ export default function BoostPage() {
                     Processing...
                 </>
                 ) : (
-                `Boost for ${PRICING[postDuration].label}`
+                `Boost Post`
                 )}
             </Button>
             </Card>
@@ -425,7 +474,7 @@ export default function BoostPage() {
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
-                {(Object.keys(PRICING) as Duration[]).map((d) => (
+                {(Object.keys(USD_PRICES) as Duration[]).map((d) => (
                 <button
                     key={d}
                     onClick={() => setCoinDuration(d)}
@@ -436,7 +485,11 @@ export default function BoostPage() {
                     }`}
                 >
                     <div className="text-xl font-bold">{d}</div>
-                    <div className="text-sm text-gray-400">{PRICING[d].label}</div>
+                    <div className="text-sm text-gray-400">
+                        {selectedToken === 'ETH' && `~${USD_PRICES[d] * 0.0003} ETH`}
+                        {selectedToken === 'USDC' && `${USD_PRICES[d]} USDC`}
+                        {selectedToken === 'FRAME' && `${USD_PRICES[d] * 100} FRAME`}
+                    </div>
                 </button>
                 ))}
             </div>
@@ -452,7 +505,7 @@ export default function BoostPage() {
                     Processing...
                 </>
                 ) : (
-                `Boost for ${PRICING[coinDuration].label}`
+                `Boost Coin`
                 )}
             </Button>
             </Card>

@@ -1,22 +1,44 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAccount, useSendTransaction } from 'wagmi';
-import { parseEther } from 'viem';
+import { useAccount, useSendTransaction, useWriteContract, useChainId, useSwitchChain } from 'wagmi';
+import { parseEther, parseUnits, erc20Abi } from 'viem';
+import { base } from 'viem/chains';
 import { Check, Zap, CreditCard, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useFrame } from '@/components/providers/FrameProvider';
+import { PAYMENT_TOKENS, type PaymentToken } from '@/config/tokens';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
+const PAYMENT_RECEIVER = "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
+
+// USD Prices
+const PRICES = {
+    trial: 1, // $1
+    monthly: 15 // $15
+};
+
+const getPrice = (plan: 'trial' | 'monthly', token: PaymentToken) => {
+    const usdPrice = PRICES[plan];
+    if (token === 'ETH') return (usdPrice * 0.0003).toString();
+    if (token === 'USDC') return usdPrice.toString();
+    if (token === 'FRAME') return (usdPrice * 100).toString();
+    return "0";
+};
 
 export default function SubscriptionPage() {
   const { isConnected } = useAccount();
   const { user } = useFrame();
   const { sendTransactionAsync } = useSendTransaction();
+  const { writeContractAsync } = useWriteContract();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<any>(null);
+  const [selectedToken, setSelectedToken] = useState<PaymentToken>('ETH');
 
   useEffect(() => {
     if (user?.fid) {
@@ -43,14 +65,37 @@ export default function SubscriptionPage() {
     }
 
     setIsProcessing(plan);
-    const price = plan === 'trial' ? '0.0004' : '0.006'; // $1 vs $15
+    const price = getPrice(plan, selectedToken);
+    const tokenInfo = PAYMENT_TOKENS[selectedToken];
+    const requiredChainId = tokenInfo.chainId || base.id;
+
+    // Check network
+    if (chainId !== requiredChainId) {
+        try {
+            await switchChain?.({ chainId: requiredChainId });
+        } catch (error) {
+            toast.error(`Please switch to ${requiredChainId === 7777777 ? 'Zora' : 'Base'} network`);
+            setIsProcessing(null);
+            return;
+        }
+    }
 
     try {
       // 1. Send Payment
-      const hash = await sendTransactionAsync({
-        to: PAYMENT_RECEIVER as `0x${string}`,
-        value: parseEther(price),
-      });
+      let hash = "";
+      if (tokenInfo.isNative) {
+        hash = await sendTransactionAsync({
+            to: PAYMENT_RECEIVER as `0x${string}`,
+            value: parseEther(price),
+        });
+      } else {
+        hash = await writeContractAsync({
+            address: tokenInfo.address,
+            abi: erc20Abi,
+            functionName: 'transfer',
+            args: [PAYMENT_RECEIVER as `0x${string}`, parseUnits(price, tokenInfo.decimals)],
+        });
+      }
 
       toast.info("Payment sent! Activating subscription...");
 
@@ -62,6 +107,7 @@ export default function SubscriptionPage() {
           plan,
           txHash: hash,
           fid: user.fid,
+          currency: selectedToken
         }),
       });
 
@@ -83,6 +129,25 @@ export default function SubscriptionPage() {
         <CreditCard className="w-8 h-8 text-green-400" />
         Subscription
       </h1>
+
+      <div className="mb-8">
+        <label className="text-white text-sm font-medium mb-2 block">
+            Payment Currency
+        </label>
+        <Select
+            value={selectedToken}
+            onValueChange={(val) => setSelectedToken(val as PaymentToken)}
+        >
+            <SelectTrigger className="w-full bg-gray-900/50 border-gray-600 text-white">
+                <SelectValue placeholder="Select currency" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="ETH">ETH (Base)</SelectItem>
+                <SelectItem value="USDC">USDC (Base)</SelectItem>
+                <SelectItem value="FRAME">FRAME (Zora)</SelectItem>
+            </SelectContent>
+        </Select>
+      </div>
 
       {subscription && (
           <div className="mb-8 p-4 bg-green-900/20 border border-green-500/30 rounded-xl flex items-center gap-4">
@@ -135,7 +200,7 @@ export default function SubscriptionPage() {
             disabled={!!isProcessing}
           >
             {isProcessing === 'monthly' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Subscribe Monthly ($15)
+            Subscribe Monthly
           </Button>
         </Card>
 
@@ -143,7 +208,10 @@ export default function SubscriptionPage() {
         <Card className="p-6 bg-gray-900/30 border-gray-800">
           <h2 className="text-xl font-bold mb-2">24h Trial</h2>
           <div className="text-2xl font-bold text-gray-200 mb-4">
-            $1<span className="text-sm text-gray-400 font-normal">/24h</span>
+            {selectedToken === 'ETH' && `~${getPrice('trial', 'ETH')} ETH`}
+            {selectedToken === 'USDC' && `${getPrice('trial', 'USDC')} USDC`}
+            {selectedToken === 'FRAME' && `${getPrice('trial', 'FRAME')} FRAME`}
+            <span className="text-sm text-gray-400 font-normal">/24h</span>
           </div>
           <p className="text-gray-400 mb-6 text-sm">
             Try all Pro features for 24 hours. One time only.
@@ -156,7 +224,7 @@ export default function SubscriptionPage() {
             disabled={!!isProcessing}
           >
             {isProcessing === 'trial' ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Start Trial ($1)
+            Start Trial
           </Button>
         </Card>
       </div>

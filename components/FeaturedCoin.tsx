@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Coins, ExternalLink, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Coins, ExternalLink, TrendingUp, DollarSign, ArrowRightLeft } from 'lucide-react';
 import Link from 'next/link';
 import { createPublicClient, http, parseAbi, formatUnits } from 'viem';
 import { zora } from 'viem/chains';
@@ -101,22 +102,42 @@ export function FeaturedCoin() {
                                 <ExternalLink className="w-5 h-5 text-blue-300" />
                             </Link>
                         </div>
-
-                        <div className="mt-6 grid grid-cols-2 gap-4">
-                            <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800">
-                                <div className="text-xs text-gray-400 mb-1">Total Supply</div>
-                                <div className="font-mono text-sm font-bold">
-                                    {Number(coinData?.totalSupply).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        
+                        <div className="grid grid-cols-2 gap-4 mt-6">
+                            <div className="bg-blue-950/30 p-3 rounded-lg border border-blue-500/10">
+                                <div className="text-xs text-blue-200/70 mb-1">Total Supply</div>
+                                <div className="font-mono text-lg font-bold text-white">
+                                    {parseInt(coinData?.totalSupply || "0").toLocaleString()}
                                 </div>
                             </div>
-                            <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-800 flex items-center justify-center">
-                                <Link
-                                    href="/boost?tab=coin"
-                                    className="text-sm font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                                >
-                                    Boost this Coin <TrendingUp className="w-4 h-4" />
-                                </Link>
+                            <div className="bg-blue-950/30 p-3 rounded-lg border border-blue-500/10">
+                                <div className="text-xs text-blue-200/70 mb-1">Price</div>
+                                <div className="font-mono text-lg font-bold text-white flex items-center gap-1">
+                                    <TrendingUp className="w-4 h-4 text-green-400" />
+                                    <span>$0.01</span>
+                                </div>
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                            <Button 
+                                variant="default" 
+                                className="bg-green-600 hover:bg-green-700 text-white w-full"
+                                disabled
+                                title="Trading coming soon"
+                            >
+                                <DollarSign className="w-4 h-4 mr-2" />
+                                Buy
+                            </Button>
+                            <Button 
+                                variant="outline" 
+                                className="border-red-500/30 text-red-400 hover:bg-red-500/10 w-full"
+                                disabled
+                                title="Trading coming soon"
+                            >
+                                <ArrowRightLeft className="w-4 h-4 mr-2" />
+                                Sell
+                            </Button>
                         </div>
                     </div>
                 )}
