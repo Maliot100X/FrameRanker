@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
       reviewerUsername,
       targetUsername,
       reviewerPfp,
-      targetPfp
+      targetPfp,
+      paymentToken = 'ETH'
     } = await request.json();
 
     if (!reviewerFid || !content || !rating) {
@@ -53,7 +54,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 3. Create Review
+    // 3. Verify Payment (if txHash provided) - MUST Verify BEFORE creating review
+    let paymentId = null;
+    if (txHash) {
+      const verification = await verifyTransaction(txHash, undefined, paymentToken);
+      if (!verification.success) {
+         return NextResponse.json({ error: "Payment verification failed: " + verification.error }, { status: 400 });
+      }
+
+      // Create Payment Record
+      const payment = await prisma.payment.create({
+        data: {
+          userId: reviewer.id,
+          txHash,
+          amount: verification.amount,
+          currency: paymentToken,
+          status: "COMPLETED",
+          purpose: "REVIEW_CREATION", // Temporary purpose until review is created
+        }
+      });
+      paymentId = payment.id;
+    }
+
+    // 4. Create Review
     const review = await prisma.review.create({
       data: {
         reviewerFid,
@@ -63,35 +86,19 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 4. Update Reviewer Points (Award 10 points per review)
+    // Update Payment Purpose with Review ID
+    if (paymentId) {
+        await prisma.payment.update({
+            where: { id: paymentId },
+            data: { purpose: `REVIEW:${review.id}` }
+        });
+    }
+
+    // 5. Update Reviewer Points (Award 10 points per review)
     await prisma.user.update({
         where: { id: reviewer.id },
         data: { points: { increment: 10 } }
     });
-
-    // 5. Record Payment (if txHash provided)
-    if (txHash) {
-      try {
-        const verification = await verifyTransaction(txHash);
-        if (verification.success) {
-            await prisma.payment.create({
-              data: {
-                userId: reviewer.id,
-                txHash,
-                amount: verification.amount,
-                currency: "ETH",
-                status: "COMPLETED",
-                purpose: `REVIEW:${review.id}`,
-              }
-            });
-        } else {
-            console.warn(`Payment verification failed for review ${review.id}:`, verification.error);
-        }
-      } catch (e) {
-        console.error("Failed to record payment:", e);
-        // Don't fail the review creation if payment recording fails
-      }
-    }
 
     return NextResponse.json({ 
       success: true, 

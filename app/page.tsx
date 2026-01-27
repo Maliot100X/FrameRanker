@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Zap, TrendingUp, Star, User, Coins } from 'lucide-react';
 import Image from 'next/image';
 import { FeaturedCoin } from '@/components/FeaturedCoin';
+import { BoostedCoinCard } from '@/components/BoostedCoinCard';
 
 interface BoostedProfile {
   id: string;
@@ -69,7 +70,18 @@ export default function Home() {
       </div>
 
       {/* Featured Coin (Zora Integration) */}
-      <FeaturedCoin />
+      <div className="space-y-4">
+        <FeaturedCoin />
+        
+        {/* Boosted Coins List */}
+        {coins.length > 0 && (
+          <div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
+            {coins.map((coin) => (
+              <BoostedCoinCard key={coin.id} coinAddress={coin.coinAddress} />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Boosted Profiles */}
       <section>
@@ -158,25 +170,7 @@ export default function Home() {
                 <p className="text-gray-500 text-sm italic">No active coin boosts.</p>
             ) : (
                 coins.map((boost) => (
-                    <Card key={boost.id} className="p-4 border-blue-500/20 bg-blue-500/5 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                                <Coins className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <div className="font-mono text-sm">{boost.coinAddress.substring(0, 6)}...{boost.coinAddress.substring(38)}</div>
-                                <div className="text-xs text-blue-400">Boosted Coin</div>
-                            </div>
-                        </div>
-                        <a 
-                            href={`https://basescan.org/token/${boost.coinAddress}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs bg-blue-500/20 px-3 py-1 rounded-full text-blue-300 hover:bg-blue-500/30 transition-colors"
-                        >
-                            View
-                        </a>
-                    </Card>
+                    <BoostedCoinCard key={boost.id} coinAddress={boost.coinAddress} />
                 ))
             )}
         </div>

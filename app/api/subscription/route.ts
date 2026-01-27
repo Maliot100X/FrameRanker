@@ -5,7 +5,7 @@ import { verifyTransaction } from "@/lib/payment.server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { plan, txHash, fid } = body;
+    const { plan, txHash, fid, currency = 'ETH' } = body;
 
     if (!fid || !plan || !txHash) {
       return NextResponse.json(
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify Transaction
-    const verification = await verifyTransaction(txHash);
+    const verification = await verifyTransaction(txHash, undefined, currency);
     if (!verification.success) {
         return NextResponse.json({ error: "Invalid payment transaction: " + verification.error }, { status: 400 });
     }
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
         userId,
         txHash,
         amount: verification.amount,
-        currency: "ETH",
+        currency: currency,
         status: "COMPLETED",
         purpose: isTrial ? "SUBSCRIPTION_TRIAL" : "SUBSCRIPTION_MONTHLY",
       },

@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/card';
 import { Coins, ExternalLink, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { createPublicClient, http, parseAbi, formatUnits } from 'viem';
-import { base } from 'viem/chains';
+import { zora } from 'viem/chains';
+import { PAYMENT_TOKENS } from '@/config/tokens';
 
-const FRAME_RANKER_TOKEN = process.env.NEXT_PUBLIC_FRAME_RANKER_TOKEN_ADDRESS;
+const FRAME_RANKER_TOKEN = PAYMENT_TOKENS.FRAME.address;
 const ERC20_ABI = parseAbi([
     "function name() view returns (string)",
     "function symbol() view returns (string)",
@@ -16,7 +17,7 @@ const ERC20_ABI = parseAbi([
 ]);
 
 const publicClient = createPublicClient({
-    chain: base,
+    chain: zora,
     transport: http()
 });
 
@@ -32,7 +33,7 @@ export function FeaturedCoin() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (!FRAME_RANKER_TOKEN || FRAME_RANKER_TOKEN === "") {
+        if (!FRAME_RANKER_TOKEN || (FRAME_RANKER_TOKEN as string) === "") {
             setIsLoading(false);
             return;
         }

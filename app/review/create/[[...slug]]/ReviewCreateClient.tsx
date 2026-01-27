@@ -11,8 +11,9 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
-import { useAccount, useChainId, useSwitchChain, useSendTransaction } from "wagmi";
+import { useAccount, useChainId, useSwitchChain, useSendTransaction, useWriteContract } from "wagmi";
 import { base } from "wagmi/chains";
+import { erc20Abi, parseUnits } from "viem";
 import Link from "next/link";
 import { useSearchParams, useParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,9 +30,16 @@ import { getLeaderboardData } from "@/lib/leaderboard";
 import { parseEther } from "viem";
 import { toast } from "sonner";
 import { useFrame } from "@/components/providers/FrameProvider";
+import { PAYMENT_TOKENS, type PaymentToken } from "@/config/tokens";
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
-const REVIEW_PRICE = "0.001"; // Approx $2-3
+const PAYMENT_RECEIVER = "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
+
+// Pricing Configuration ($0.50 - $1.00 equivalent)
+const PRICES: Record<PaymentToken, string> = {
+  ETH: "0.0003", // ~$1.00
+  USDC: "1",      // $1.00
+  FRAME: "100",   // 100 FRAME
+};
 
 const EMOJI_OPTIONS = [
   { value: 5, emoji: "❤️", label: "Love & appreciation" },
@@ -79,6 +87,7 @@ export default function ReviewCreateClient() {
   // Review form state
   const [selectedEmoji, setSelectedEmoji] = useState<number | null>(null);
   const [content, setContent] = useState("");
+  const [selectedToken, setSelectedToken] = useState<PaymentToken>('FRAME'); // Default to FRAME
 
   // Submission state
   const [submitting, setSubmitting] = useState(false);
@@ -86,6 +95,9 @@ export default function ReviewCreateClient() {
   const [submittedReviewId, setSubmittedReviewId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  const { writeContractAsync } = useWriteContract();
+
 
   // Load reviewee profile by wallet address
   const loadRevieweeByAddress = async (address: string) => {
@@ -334,12 +346,15 @@ export default function ReviewCreateClient() {
       return;
     }
     
-    // Check if on Base network
-    if (!isCorrectNetwork) {
+    const tokenInfo = PAYMENT_TOKENS[selectedToken];
+    const requiredChainId = tokenInfo.chainId || base.id;
+
+    // Check if on correct network
+    if (chainId !== requiredChainId) {
       try {
-        await switchChain?.({ chainId: base.id });
+        await switchChain?.({ chainId: requiredChainId });
       } catch (err: any) {
-        setError("Please switch to Base network to continue");
+        setError(`Please switch to ${requiredChainId === 7777777 ? 'Zora' : 'Base'} network to continue`);
         return;
       }
     }
@@ -358,11 +373,25 @@ export default function ReviewCreateClient() {
     setError("");
 
     try {
-      // 1. Send Payment (ETH)
-      const hash = await sendTransactionAsync({
-        to: PAYMENT_RECEIVER as `0x${string}`,
-        value: parseEther(REVIEW_PRICE),
-      });
+      let hash = "";
+      const price = PRICES[selectedToken];
+
+      // 1. Send Payment
+      if (tokenInfo.isNative) {
+        // ETH Payment
+        hash = await sendTransactionAsync({
+          to: PAYMENT_RECEIVER as `0x${string}`,
+          value: parseEther(price),
+        });
+      } else {
+        // ERC20 Payment (USDC or FRAME)
+        hash = await writeContractAsync({
+          address: tokenInfo.address,
+          abi: erc20Abi,
+          functionName: 'transfer',
+          args: [PAYMENT_RECEIVER as `0x${string}`, parseUnits(price, tokenInfo.decimals)],
+        });
+      }
 
       setTxHash(hash);
       toast.success("Payment sent! Creating review...");
@@ -377,6 +406,7 @@ export default function ReviewCreateClient() {
           content,
           rating: selectedEmoji,
           txHash: hash,
+          paymentToken: selectedToken, // Pass token type
           reviewerAddress: userAddress,
           targetAddress: reviewee.wallet,
           reviewerUsername: user?.username || "Anonymous",
@@ -709,6 +739,42 @@ export default function ReviewCreateClient() {
                 />
               </div>
 
+              {/* Token Selection */}
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50">
+                <label className="text-white text-sm font-medium mb-4 block">
+                  Select Payment Method:
+                </label>
+                <div className="grid grid-cols-1 gap-3">
+                  {(Object.keys(PAYMENT_TOKENS) as PaymentToken[]).map((token) => (
+                    <button
+                      key={token}
+                      onClick={() => setSelectedToken(token)}
+                      className={`
+                        flex items-center justify-between p-4 rounded-xl border transition-all
+                        ${
+                          selectedToken === token
+                            ? "border-pink-500 bg-pink-500/10"
+                            : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${token === 'FRAME' ? 'bg-purple-500' : token === 'USDC' ? 'bg-blue-500' : 'bg-gray-500'}`}>
+                           <span className="text-xs font-bold text-white">{token[0]}</span>
+                        </div>
+                        <div className="text-left">
+                          <div className="text-white font-medium">{PAYMENT_TOKENS[token].label}</div>
+                          <div className="text-gray-400 text-xs">{PAYMENT_TOKENS[token].chainId === 7777777 ? 'Zora Chain' : 'Base Chain'}</div>
+                        </div>
+                      </div>
+                      <div className="text-white font-bold">
+                        {PRICES[token]} {PAYMENT_TOKENS[token].symbol}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Error Display */}
               {error && (
                 <motion.div
@@ -733,7 +799,7 @@ export default function ReviewCreateClient() {
                     Processing...
                   </>
                 ) : (
-                  `Pay ${REVIEW_PRICE} ETH & Post Review`
+                  `Pay ${PRICES[selectedToken]} ${PAYMENT_TOKENS[selectedToken].symbol} & Post Review`
                 )}
               </Button>
               

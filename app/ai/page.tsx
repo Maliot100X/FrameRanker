@@ -22,7 +22,7 @@ interface Message {
   };
 }
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xYourTreasuryAddressHere";
+const PAYMENT_RECEIVER = "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
 
 export default function AIPage() {
   const { isConnected, address } = useAccount();
@@ -30,7 +30,7 @@ export default function AIPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your FrameRanker AI. I can help you boost your Profile, Casts, or Coins on the leaderboard. I can also generate detailed reviews to earn you points. Type '/cast' to share your stats!",
+      content: "Welcome to FrameRanker! 🚀\n\nI'm your AI assistant. Here's what you can do:\n\n⭐ **Reviews**: Share authentic feedback and earn points.\n🚀 **Boosts**: Promote your Profile, Casts, or Coins to the top.\n🪙 **Coins**: Discover and boost community coins.\n🏆 **Leaderboard**: Compete for top rankings and rewards.\n🎁 **Giveaways**: Win prizes by staying active.\n\nType **/cast** to generate a viral status update with your Rank & Score!",
     },
   ]);
   const [input, setInput] = useState("");

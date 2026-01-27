@@ -17,34 +17,55 @@ export async function POST(request: NextRequest) {
 
     // Fetch user stats from DB
     let userStats = "";
+    let rank = 0;
+    let isBoosted = false;
+    let points = 0;
+
     if (fid) {
         try {
             const user = await prisma.user.findUnique({
-            where: { fid: Number(fid) },
-            include: {
-                reviewsReceived: true
-            }
-        });
+                where: { fid: Number(fid) },
+                include: {
+                    reviewsReceived: true,
+                    boosts: {
+                        where: { status: 'ACTIVE', endTime: { gt: new Date() } }
+                    }
+                }
+            });
         
-        if (user) {
-            userStats = `
+            if (user) {
+                points = user.points;
+                isBoosted = user.boosts.length > 0;
+                
+                // Calculate Rank
+                rank = await prisma.user.count({
+                    where: { points: { gt: user.points } }
+                }) + 1;
+
+                userStats = `
 User Stats:
-- Points: ${user.points}
+- Rank: #${rank}
+- Points: ${points}
 - Reviews Received: ${user.reviewsReceived.length}
+- Boost Status: ${isBoosted ? "Active" : "Inactive"}
 - Bio: ${user.bio || "None"}
-            `;
-        }
+                `;
+            }
         } catch (e) {
             console.error("Failed to fetch user stats for AI", e);
         }
     }
 
     let systemPrompt = `
-You are FrameRanker AI, an assistant for a Farcaster Mini App.
-Your goal is to help users boost their profiles, get reviews, and understand the leaderboard.
-Users can pay for:
-1. "BOOST": Increases visibility on the leaderboard. Prices: 1h ($1), 5h ($3), 24h ($6).
-2. "REVIEW": AI generates a detailed review of their profile. Price: $0.30.
+You are FrameRanker AI, the assistant for FrameRanker (a Farcaster Mini App).
+FrameRanker allows users to:
+1. Review others: Share authentic feedback and earn points.
+2. Boost Profiles/Casts/Coins: Increase visibility on the leaderboard and home page.
+3. Compete on the Leaderboard: Ranked by points and activity.
+4. Participate in Giveaways: Active users get rewards.
+5. Use the /cast command: Share your rank and score on Farcaster.
+
+Supported Currencies: FrameRanker Coin (Zora), USDC, and ETH.
 
 If the user asks for a boost or review, explain the benefits and ask if they want to proceed.
 If they confirm they want to buy, output a specific JSON marker at the end of your message.
@@ -66,12 +87,17 @@ ${userStats}
 
     if (isCastCommand) {
         systemPrompt = `
-You are FrameRanker AI. The user wants to post a cast to Farcaster.
+You are FrameRanker AI. The user wants to post a cast to Farcaster using the /cast command.
 Generate a catchy, engaging Farcaster cast (max 320 chars) about their experience on FrameRanker.
-Include emojis and hashtags like #FrameRanker #Base.
-Mention their username @${username} if known.
-If you know their stats, mention them (e.g. "I just hit ${userStats ? 'X points' : 'new milestones'} on FrameRanker!").
-Encourage others to check out the app.
+
+MANDATORY INCLUSIONS:
+- Rank: #${rank}
+- Score: ${points} Points
+- Boost Status: ${isBoosted ? "🚀 Boosted" : ""}
+- App Link: https://frames.maliot.io/ranker (or FrameRanker)
+- Hashtags: #FrameRanker #Base #Zora
+
+NEVER ask for payment in the cast text.
 Do NOT output the JSON action marker. Just the cast text.
 
 User context: FID: ${fid}, Username: ${username}

@@ -5,9 +5,9 @@ import { verifyTransaction } from "@/lib/payment.server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { type, duration, amount, txHash, target, fid } = body;
+    const { type, duration, amount, txHash, target, fid, currency = 'ETH' } = body;
 
-    console.log("[API] Boost Request Received:", { type, duration, amount, txHash, target, fid });
+    console.log("[API] Boost Request Received:", { type, duration, amount, txHash, target, fid, currency });
 
     // Calculate end time
     const durationMap: Record<string, number> = {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Verify Transaction Hash
     if (txHash) {
-      const verification = await verifyTransaction(txHash, Number(amount));
+      const verification = await verifyTransaction(txHash, Number(amount), currency);
       if (!verification.success) {
         return NextResponse.json(
           { error: `Payment verification failed: ${verification.error}` },
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
             userId,
             txHash,
             amount: amount, // Prisma handles string/number for Decimal
-            currency: "ETH",
+            currency: currency,
             status: "COMPLETED", // Optimistic completion
             purpose: `BOOST_${duration.toUpperCase()}`,
         }
