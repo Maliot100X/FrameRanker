@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db.server";
 
-// MOCK DATA FOR NOW since we don't have enough real data for FrameRanker logic
-// In production, this would query Supabase for boosts and smart contract for reviews
+// Leaderboard API
+// Fetches active boosts and top reviewers from the database
 
 export interface LeaderboardEntry {
   id: string;

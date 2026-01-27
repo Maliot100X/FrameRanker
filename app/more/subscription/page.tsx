@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useFrame } from '@/components/providers/FrameProvider';
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xYourTreasuryAddressHere";
+const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
 
 export default function SubscriptionPage() {
   const { isConnected } = useAccount();

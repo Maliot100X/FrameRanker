@@ -9,7 +9,7 @@ import {
   rainbowWallet,
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
-import { BASE_RPC_ENDPOINTS } from "./reviewme-contract";
+import { RPC_ENDPOINTS } from "./rpc";
 
 const projectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID";
@@ -19,7 +19,7 @@ const projectId =
  * Uses free public RPC endpoints with automatic fallback
  */
 function getTransport() {
-  const endpoints: string[] = [...BASE_RPC_ENDPOINTS];
+  const endpoints: string[] = [...RPC_ENDPOINTS];
 
   // Add custom RPC URL if provided (highest priority)
   if (process.env.NEXT_PUBLIC_BASE_RPC_URL) {

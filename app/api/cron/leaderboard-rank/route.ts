@@ -46,9 +46,9 @@ export async function GET(request: NextRequest) {
         const user = topProfiles[i];
         const rank = i + 1;
         
-        let prize = "100 HUNT";
-        if (rank === 1) prize = "500 HUNT + 1h Boost";
-        if (rank === 2) prize = "250 HUNT";
+        let prize = "100 Points";
+        if (rank === 1) prize = "500 Points + 1h Boost";
+        if (rank === 2) prize = "250 Points";
         
         // Check if already awarded for this week? 
         // We'll skip duplicate check for this MVP to ensure it runs

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { fetchProfileByWallet, formatAddress, getDefaultAvatar, type NeynarUser } from '@/lib/neynar';
-import { type Review } from '@/lib/reviewme-contract';
+import { type Review } from '@/lib/types';
 
 const EMOJI_MAP: Record<number, string> = {
   1: '🤔',
@@ -24,7 +24,7 @@ const EMOJI_LABELS: Record<number, string> = {
 
 interface ReviewCardProps {
   review: Review;
-  reviewId?: number;
+  reviewId?: string | number;
   hideViewProfile?: boolean; // Hide "View Profile" link (e.g., on profile pages)
   reviewerProfile?: NeynarUser | null; // Optional: pre-fetched profile
   revieweeProfile?: NeynarUser | null; // Optional: pre-fetched profile

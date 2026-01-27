@@ -8,7 +8,7 @@ import { ShareButtons } from '@/components/ShareButtons';
 import { TxHashLink } from '@/components/TxHashLink';
 import { useReview } from '@/lib/hooks/useReview';
 import { useProfile } from '@/lib/hooks/useNeynar';
-import type { Review } from '@/lib/reviewme-contract';
+import type { Review } from '@/lib/types';
 
 const EMOJI_MAP: Record<number, string> = {
   1: '🤔',
@@ -48,7 +48,7 @@ function formatTimestamp(timestamp: bigint): string {
 }
 
 interface ReviewDetailContentProps {
-  reviewId: number;
+  reviewId: string;
   initialReview?: Review;
 }
 
@@ -179,43 +179,20 @@ export function ReviewDetailContent({ reviewId, initialReview }: ReviewDetailCon
           {/* Divider */}
           <div className="border-t border-gray-700/50 my-6"></div>
 
-          {/* RM Distribution - Subtle Bar Graph */}
+          {/* Points Reward */}
           <div className="space-y-2">
             <div className="text-xs text-gray-400 font-medium mb-3">
-              100 <span className="text-yellow-400">$RM</span> Distribution
+              Review Reward
             </div>
             
-            {/* Compact Bar Graphs */}
-            <div className="space-y-1.5">
-              {/* Reviewer - 89% */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-5 bg-gray-900/30 rounded overflow-hidden relative">
-                  <div className="absolute inset-0 bg-gray-600/40 rounded" style={{ width: '89%' }}></div>
-                  <div className="absolute inset-0 flex items-center px-2 text-xs">
-                    <span className="text-gray-300">89% → @{reviewerProfile?.username || formatAddress(review.reviewer).slice(0, 8)}</span>
-                  </div>
+            <div className="flex items-center gap-3 p-3 bg-gray-900/30 rounded-lg border border-yellow-500/10">
+                <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                    <span className="text-yellow-500 font-bold text-xs">10</span>
                 </div>
-              </div>
-
-              {/* Reviewee - 10% */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-5 bg-gray-900/30 rounded overflow-hidden relative">
-                  <div className="absolute inset-0 bg-gray-600/40 rounded" style={{ width: '10%' }}></div>
-                  <div className="absolute inset-0 flex items-center px-2 text-xs">
-                    <span className="text-gray-300">10% → @{revieweeProfile?.username || formatAddress(review.reviewee).slice(0, 8)}</span>
-                  </div>
+                <div>
+                    <div className="text-sm text-white font-medium">10 Points</div>
+                    <div className="text-xs text-gray-400">Awarded to Reviewer</div>
                 </div>
-              </div>
-
-              {/* Burn - 1% */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-5 bg-gray-900/30 rounded overflow-hidden relative">
-                  <div className="absolute inset-0 bg-gray-600/40 rounded" style={{ width: '1%' }}></div>
-                  <div className="absolute inset-0 flex items-center px-2 text-xs">
-                    <span className="text-gray-300">1% → burn</span>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 

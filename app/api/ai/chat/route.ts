@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db.server";
 
 const AIML_API_KEY = process.env.AIML_API_KEY;
 const BASE_URL = "https://api.aimlapi.com/chat/completions"; // Standard AIML endpoint
@@ -12,6 +13,30 @@ export async function POST(request: NextRequest) {
             message: "I'm running in offline mode. I can help you with basic info about FrameRanker.",
             action: null
         });
+    }
+
+    // Fetch user stats from DB
+    let userStats = "";
+    if (fid) {
+        try {
+            const user = await prisma.user.findUnique({
+            where: { fid: Number(fid) },
+            include: {
+                reviewsReceived: true
+            }
+        });
+        
+        if (user) {
+            userStats = `
+User Stats:
+- Points: ${user.points}
+- Reviews Received: ${user.reviewsReceived.length}
+- Bio: ${user.bio || "None"}
+            `;
+        }
+        } catch (e) {
+            console.error("Failed to fetch user stats for AI", e);
+        }
     }
 
     let systemPrompt = `
@@ -36,17 +61,21 @@ $6 = 0.002 ETH
 $0.30 = 0.0001 ETH
 
 User context: FID: ${fid}, Username: ${username}
+${userStats}
     `;
 
     if (isCastCommand) {
         systemPrompt = `
 You are FrameRanker AI. The user wants to post a cast to Farcaster.
 Generate a catchy, engaging Farcaster cast (max 320 chars) about their experience on FrameRanker.
-Include emojis.
+Include emojis and hashtags like #FrameRanker #Base.
 Mention their username @${username} if known.
-If you know their rank or score (assume they are doing well), mention it.
-Encourage others to check out FrameRanker.
+If you know their stats, mention them (e.g. "I just hit ${userStats ? 'X points' : 'new milestones'} on FrameRanker!").
+Encourage others to check out the app.
 Do NOT output the JSON action marker. Just the cast text.
+
+User context: FID: ${fid}, Username: ${username}
+${userStats}
         `;
     }
 

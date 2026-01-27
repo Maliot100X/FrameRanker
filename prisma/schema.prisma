@@ -20,6 +20,9 @@ model User {
   notificationToken String?
   notificationUrl   String?
   
+  points            Int      @default(0)
+  bio               String?
+
   // Relations
   reviewsGiven      Review[] @relation("Reviewer")
   reviewsReceived   Review[] @relation("ReviewTarget")
@@ -82,6 +85,7 @@ model Boost {
   type        String   // "PROFILE", "POST", "COIN"
   targetPostId String?
   coinType    String?  // "BASE", "ZORA", "APP_TOKEN"
+  coinAddress String?  // Address of the boosted coin
   
   startTime   DateTime
   endTime     DateTime

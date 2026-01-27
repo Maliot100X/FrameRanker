@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { notifyReviewReceived } from '@/lib/notification.server';
-import { publicClient, REVIEWME_CONTRACT_ADDRESS } from '@/lib/reviewme-contract';
-import { keccak256, toHex } from 'viem';
+import { createPublicClient, http, keccak256, toHex } from 'viem';
+import { base } from 'viem/chains';
+import { RPC_ENDPOINTS } from '@/lib/rpc';
+
+const REVIEWME_CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_REVIEWME_CONTRACT_ADDRESS as `0x${string}`) || "0x5BfC8705cF877776e461e27FAcB51D8C2bDd00c7";
+
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http(RPC_ENDPOINTS[0]),
+});
 
 // ReviewSubmitted event signature
 // event ReviewSubmitted(uint256 indexed reviewId, address indexed reviewer, address indexed reviewee, string content, uint8 emoji, uint256 timestamp)

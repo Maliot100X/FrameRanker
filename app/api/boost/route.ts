@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db.server";
+import { verifyTransaction } from "@/lib/payment.server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,9 +19,17 @@ export async function POST(request: NextRequest) {
     const startTime = new Date();
     const endTime = new Date(startTime.getTime() + hours * 60 * 60 * 1000);
 
-    // 1. Verify Transaction Hash (Mock for now)
-    // In production: Use viem to getTransactionReceipt and verify 'to', 'value', and status
-    
+    // 1. Verify Transaction Hash
+    if (txHash) {
+      const verification = await verifyTransaction(txHash, Number(amount));
+      if (!verification.success) {
+        return NextResponse.json(
+          { error: `Payment verification failed: ${verification.error}` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check if payment already exists
     const existingPayment = await prisma.payment.findUnique({
         where: { txHash }
@@ -148,6 +157,23 @@ export async function POST(request: NextRequest) {
                 userId,
                 type: "POST",
                 targetPostId: post.id,
+                startTime,
+                endTime,
+                status: "ACTIVE",
+                paymentId: payment.id
+            }
+        });
+    } else if (type === 'coin') {
+        if (!target) {
+             return NextResponse.json({ error: "Coin address is required" }, { status: 400 });
+        }
+        
+        boost = await prisma.boost.create({
+            data: {
+                userId,
+                type: "COIN",
+                coinAddress: target,
+                coinType: "BASE",
                 startTime,
                 endTime,
                 status: "ACTIVE",

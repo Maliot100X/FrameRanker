@@ -2,50 +2,34 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import { formatAddress } from "@/lib/neynar";
 import { getProfilesByAddresses } from "@/lib/neynar-server";
-import {
-  publicClient,
-  REVIEWME_CONTRACT_ADDRESS,
-  REVIEWME_ABI,
-  type Review,
-} from "@/lib/reviewme-contract";
+import { prisma } from "@/lib/db.server";
 import { cache } from "react";
 import { ReviewDetailContent } from "@/components/ReviewDetailContent";
 import { constructMetadata } from "@/lib/metadata";
 
 const fetchReviewDetail = cache(
-  async (reviewId: number): Promise<Review | null> => {
+  async (reviewId: string) => {
     try {
-      // Direct RPC call to avoid "fetch self" issues in production
-      // This runs on the server during metadata generation
-      const reviewData = (await publicClient.readContract({
-        address: REVIEWME_CONTRACT_ADDRESS,
-        abi: REVIEWME_ABI,
-        functionName: "reviews",
-        args: [BigInt(reviewId)],
-      })) as any;
+      const review = await prisma.review.findUnique({
+        where: { id: reviewId },
+        include: {
+          reviewer: true,
+          targetUser: true,
+        },
+      });
 
-      const reviewer = reviewData.reviewer || reviewData[0];
-
-      // Check if review exists (valid reviewer address)
-      if (
-        !reviewer ||
-        reviewer === "0x0000000000000000000000000000000000000000"
-      ) {
-        return null;
-      }
+      if (!review) return null;
 
       return {
-        reviewer: reviewData.reviewer || reviewData[0],
-        reviewee: reviewData.reviewee || reviewData[1],
-        content: reviewData.content || reviewData[2],
-        emoji: Number(reviewData.emoji || reviewData[3] || 0),
-        timestamp: reviewData.timestamp || reviewData[4] || 0n,
-        reviewId: reviewId,
+        reviewer: review.reviewer.walletAddress as `0x${string}`,
+        reviewee: review.targetUser?.walletAddress as `0x${string}`,
+        content: review.content,
+        emoji: review.rating,
+        timestamp: BigInt(Math.floor(review.createdAt.getTime() / 1000)),
+        reviewId: review.id,
       };
     } catch (error) {
-      // Timeout or error - return null for graceful degradation
-      // Client-side will handle data fetching with proper retry logic
-      console.error("Failed to fetch review detail (SEO metadata):", error);
+      console.error("Failed to fetch review detail:", error);
       return null;
     }
   }
@@ -56,17 +40,14 @@ export async function generateMetadata({
 }: {
   params: { reviewId: string };
 }): Promise<Metadata> {
-  const reviewId = parseInt(params.reviewId, 10);
+  const reviewId = params.reviewId;
 
-  // Try to fetch review data for SEO, but don't fail if it's a new review
-  // New reviews will be handled client-side with proper retry logic
   try {
     const review = await fetchReviewDetail(reviewId);
 
     if (!review) {
-      // Return basic metadata for new/unfound reviews
       return constructMetadata({
-        title: `Review #${reviewId} | ReviewMe`,
+        title: `Review #${reviewId} | FrameRanker`,
       });
     }
 
@@ -95,7 +76,6 @@ export async function generateMetadata({
     });
   } catch (error) {
     console.error("Failed to generate metadata for review:", error);
-    // Return basic metadata if fetch fails (e.g., for newly created reviews)
     return constructMetadata({
       title: `Review #${reviewId} | FrameRanker`,
     });
@@ -107,11 +87,7 @@ export default async function ReviewDetailPage({
 }: {
   params: { reviewId: string };
 }) {
-  const reviewId = parseInt(params.reviewId, 10);
-
-  if (isNaN(reviewId) || reviewId < 0) {
-    notFound();
-  }
+  const reviewId = params.reviewId;
 
   // For newly created reviews, we don't fetch on server to avoid RPC overload
   // Client component will handle all data fetching with caching and retry logic

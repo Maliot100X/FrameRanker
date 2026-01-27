@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db.server";
+import { verifyTransaction } from "@/lib/payment.server";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,6 +12,21 @@ export async function POST(request: NextRequest) {
         { error: "Missing required fields" },
         { status: 400 }
       );
+    }
+
+    // Determine plan details
+    let durationDays = 30;
+    let isTrial = false;
+    
+    if (plan === 'trial') {
+        durationDays = 7;
+        isTrial = true;
+    }
+
+    // Verify Transaction
+    const verification = await verifyTransaction(txHash);
+    if (!verification.success) {
+        return NextResponse.json({ error: "Invalid payment transaction: " + verification.error }, { status: 400 });
     }
 
     // Check if payment already exists
@@ -42,11 +56,6 @@ export async function POST(request: NextRequest) {
         console.error("Error upserting user:", e);
         return NextResponse.json({ error: "Failed to find or create user" }, { status: 500 });
     }
-
-    // Determine subscription details
-    const isTrial = plan === 'trial';
-    const amount = isTrial ? 0.0004 : 0.006; // Match frontend logic
-    const durationDays = isTrial ? 1 : 30;
     
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000);
@@ -56,7 +65,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         txHash,
-        amount: amount,
+        amount: verification.amount,
         currency: "ETH",
         status: "COMPLETED",
         purpose: isTrial ? "SUBSCRIPTION_TRIAL" : "SUBSCRIPTION_MONTHLY",

@@ -43,6 +43,19 @@ export async function GET() {
       take: 10,
     });
 
+    // Fetch Active Coin Boosts
+    const boostedCoins = await prisma.boost.findMany({
+      where: {
+        type: "COIN",
+        status: "ACTIVE",
+        endTime: { gt: now },
+      },
+      orderBy: {
+        startTime: 'desc',
+      },
+      take: 10,
+    });
+
     return NextResponse.json({
       boostedProfiles: boostedProfiles.map(b => ({
         ...b,
@@ -66,6 +79,13 @@ export async function GET() {
             }
         } : null
       })).filter(b => b.post !== null),
+      boostedCoins: boostedCoins.map(b => ({
+        id: b.id,
+        coinAddress: b.coinAddress,
+        coinType: b.coinType,
+        startTime: b.startTime,
+        endTime: b.endTime
+      })),
     });
 
   } catch (error) {

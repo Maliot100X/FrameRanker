@@ -30,7 +30,7 @@ export default function AIPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your FrameRanker AI Assistant. I can help you analyze your profile, suggest the best boosting strategy, or generate reviews. How can I help you today?",
+      content: "Hello! I'm your FrameRanker AI. I can help you boost your Profile, Casts, or Coins on the leaderboard. I can also generate detailed reviews to earn you points. Type '/cast' to share your stats!",
     },
   ]);
   const [input, setInput] = useState("");

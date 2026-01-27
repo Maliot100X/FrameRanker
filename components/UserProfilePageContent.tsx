@@ -209,12 +209,12 @@ export default function UserProfilePageContent({
       const profileUrl =
         typeof window !== "undefined"
           ? `${window.location.origin}/user/${address}`
-          : `https://reviewme.fun/user/${address}`;
+          : `https://frame-ranker.vercel.app/user/${address}`;
 
       // Create share message
       const shareText = `@${username} has ${reviewCount} onchain review${
         reviewCount !== 1 ? "s" : ""
-      } on ReviewMe`;
+      } on FrameRanker`;
 
       // Use composeCast SDK action for native mini app experience
       const result = await sdk.actions.composeCast({

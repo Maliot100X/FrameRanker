@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import UserProfilePageContent from "@/components/UserProfilePageContent";
 import { constructMetadata } from "@/lib/metadata";
 import { getProfileByAddress } from "@/lib/neynar-server";
-import { getReviewCount } from "@/lib/reviewme-contract";
+import { prisma } from "@/lib/db.server";
 import { formatAddress } from "@/lib/neynar";
 
 interface Props {
@@ -16,7 +16,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // We don't want metadata generation to fail, so we catch errors
   const [profile, reviewCount] = await Promise.all([
     getProfileByAddress(address),
-    getReviewCount(address as `0x${string}`).catch(() => 0),
+    prisma.review.count({
+      where: {
+        targetUser: {
+          walletAddress: {
+            equals: address,
+            mode: "insensitive",
+          },
+        },
+      },
+    }).catch(() => 0),
   ]);
 
   const displayName = profile?.displayName || formatAddress(address);

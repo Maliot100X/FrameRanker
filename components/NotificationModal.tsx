@@ -28,7 +28,7 @@ export function NotificationModal() {
     }
 
     // Check localStorage for "don't show again" preference
-    const hasDismissed = localStorage.getItem('reviewme-notification-modal-dismissed');
+    const hasDismissed = localStorage.getItem('frameranker-notification-modal-dismissed');
     if (hasDismissed === 'true') {
       setDontShowAgain(true);
       return;
@@ -113,7 +113,7 @@ export function NotificationModal() {
           console.log('✅ Notification modal closed via console');
         },
         reset: () => {
-          localStorage.removeItem('reviewme-notification-modal-dismissed');
+          localStorage.removeItem('frameranker-notification-modal-dismissed');
           setDontShowAgain(false);
           setIsOpen(true);
           console.log('✅ Notification modal reset via console');
@@ -181,7 +181,7 @@ export function NotificationModal() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-semibold text-white mb-1">
-                        {!isAppAdded ? 'Add ReviewMe' : 'Enable Notifications'}
+                        {!isAppAdded ? 'Add FrameRanker' : 'Enable Notifications'}
                       </h3>
                       <p className="text-sm text-gray-400">
                         {!isAppAdded
@@ -203,7 +203,7 @@ export function NotificationModal() {
                   <p className="text-sm text-gray-300">
                     {!isAppAdded ? (
                       <>
-                        Add ReviewMe to your Farcaster client to stay updated with reviews and
+                        Add FrameRanker to your Farcaster client to stay updated with reviews and
                         notifications.
                       </>
                     ) : (

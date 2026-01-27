@@ -1,30 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAccount, useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
-import { parseEther } from "viem";
-import { Loader2, CheckCircle, AlertCircle, Zap, TrendingUp, Coins } from "lucide-react";
+import { useAccount, useSendTransaction } from "wagmi";
+import { parseEther, createPublicClient, http, parseAbi, formatUnits, isAddress } from "viem";
+import { base } from "viem/chains";
+import { Loader2, Zap, TrendingUp, Coins, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useFrame } from "@/components/providers/FrameProvider";
 
-const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xYourTreasuryAddressHere";
-// Placeholder Zora Coin Contract Address (Example: Zora on Base)
-const ZORA_COIN_ADDRESS = "0x7777777333332222211111999999888888"; 
+const PAYMENT_RECEIVER = process.env.NEXT_PUBLIC_PAYMENT_RECEIVER_ADDRESS || "0xCcD1E099590bfEdf279e239558772Bbb50902EF6";
+// Placeholder or Real Zora Coin Contract Address
+const FRAME_RANKER_TOKEN = process.env.NEXT_PUBLIC_FRAME_RANKER_TOKEN_ADDRESS || "";
 
 type Duration = "1h" | "5h" | "24h";
 const PRICING: Record<Duration, { price: string; label: string }> = {
-  "1h": { price: "0.0004", label: "$1" }, // Approx ETH price for $1 (assuming $2500/ETH) - simplified
+  "1h": { price: "0.0004", label: "$1" },
   "5h": { price: "0.0012", label: "$3" },
   "24h": { price: "0.0024", label: "$6" },
 };
 
 type TabType = "profile" | "post" | "coin";
 
+// ERC20 ABI for metadata
+const ERC20_ABI = parseAbi([
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)"
+]);
+
+const publicClient = createPublicClient({
+  chain: base,
+  transport: http()
+});
+
 export default function BoostPage() {
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const { user } = useFrame();
   const [activeTab, setActiveTab] = useState<TabType>("profile");
   
@@ -35,7 +49,6 @@ export default function BoostPage() {
   const [postUrl, setPostUrl] = useState("");
   const [coinAddress, setCoinAddress] = useState("");
   
-  const [postPreview, setPostPreview] = useState<{ username: string, hash: string } | null>(null);
   const [postData, setPostData] = useState<{
     hash: string;
     author: {
@@ -50,37 +63,83 @@ export default function BoostPage() {
       likes: number;
       recasts: number;
     };
-    embeds: any[];
   } | null>(null);
+
+  const [coinData, setCoinData] = useState<{
+    name: string;
+    symbol: string;
+    decimals: number;
+    totalSupply: string;
+  } | null>(null);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isCoinLoading, setIsCoinLoading] = useState(false);
 
   const { sendTransactionAsync } = useSendTransaction();
 
-  // URL parser and fetcher for preview
+  // Initialize with FrameRanker token if available
+  useEffect(() => {
+    if (FRAME_RANKER_TOKEN && activeTab === "coin" && !coinAddress) {
+        setCoinAddress(FRAME_RANKER_TOKEN);
+        // Trigger fetch manually or via state change if we extract handler
+        // But for now, user might need to focus or we can just call the handler logic
+        // Let's just set address, and user can interact, or better:
+        // We can't call async handler easily in effect without wrap.
+        // Let's just set it.
+    }
+  }, [activeTab]);
+
+  // Effect to fetch coin data when address is valid and present
+  useEffect(() => {
+    if (activeTab === "coin" && coinAddress && isAddress(coinAddress)) {
+        const fetchCoin = async () => {
+            setIsCoinLoading(true);
+            try {
+                const [name, symbol, decimals, totalSupply] = await Promise.all([
+                    publicClient.readContract({ address: coinAddress as `0x${string}`, abi: ERC20_ABI, functionName: 'name' }).catch(() => "Unknown"),
+                    publicClient.readContract({ address: coinAddress as `0x${string}`, abi: ERC20_ABI, functionName: 'symbol' }).catch(() => "???"),
+                    publicClient.readContract({ address: coinAddress as `0x${string}`, abi: ERC20_ABI, functionName: 'decimals' }).catch(() => 18),
+                    publicClient.readContract({ address: coinAddress as `0x${string}`, abi: ERC20_ABI, functionName: 'totalSupply' }).catch(() => 0n),
+                ]);
+
+                setCoinData({
+                    name: name as string,
+                    symbol: symbol as string,
+                    decimals: decimals as number,
+                    totalSupply: formatUnits(totalSupply as bigint, decimals as number)
+                });
+            } catch (error) {
+                console.error("Failed to fetch coin data:", error);
+                setCoinData(null);
+            } finally {
+                setIsCoinLoading(false);
+            }
+        };
+        fetchCoin();
+    } else {
+        setCoinData(null);
+    }
+  }, [coinAddress, activeTab]);
+
   const handleUrlChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
     setPostUrl(url);
     
-    // Format: https://warpcast.com/username/0xhash
-    const match = url.match(/warpcast\.com\/([^/]+)\/(0x[a-fA-F0-9]+)/);
+    // Support warpcast.com/username/hash and other formats if needed
+    // Regex for: https://warpcast.com/username/0xhash
+    const match = url.match(/warpcast\.com\/[^/]+\/(0x[a-fA-F0-9]+)/);
     
     if (match) {
-        setPostPreview({
-            username: match[1],
-            hash: match[2]
-        });
-        
-        // Fetch real data from Neynar via our API
         setIsPreviewLoading(true);
         try {
+          // Use our API which wraps Neynar
           const res = await fetch(`/api/neynar/cast?url=${encodeURIComponent(url)}`);
           if (res.ok) {
             const data = await res.json();
             setPostData(data);
           } else {
             setPostData(null);
-            console.error("Failed to fetch cast preview");
           }
         } catch (err) {
           console.error("Error fetching preview:", err);
@@ -89,9 +148,12 @@ export default function BoostPage() {
           setIsPreviewLoading(false);
         }
     } else {
-        setPostPreview(null);
         setPostData(null);
     }
+  };
+
+  const handleCoinAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCoinAddress(e.target.value);
   };
 
   const handleBoost = async (type: TabType) => {
@@ -127,7 +189,7 @@ export default function BoostPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: type.toUpperCase(), // PROFILE, POST, COIN
+          type: type.toUpperCase(),
           duration,
           amount: price,
           txHash: hash,
@@ -142,6 +204,7 @@ export default function BoostPage() {
       setPostUrl("");
       setCoinAddress("");
       setPostData(null);
+      setCoinData(null);
     } catch (error) {
       console.error("Boost failed:", error);
       toast.error("Payment failed or rejected");
@@ -319,7 +382,7 @@ export default function BoostPage() {
                 Boost Coin
             </h2>
             <p className="text-gray-400 mb-6">
-                Boost visibility for a Zora Coin or any Base token.
+                Feature a Zora/Base coin to the community.
             </p>
 
             <div className="space-y-4 mb-6">
@@ -330,13 +393,35 @@ export default function BoostPage() {
                 <Input
                     placeholder="0x..."
                     value={coinAddress}
-                    onChange={(e) => setCoinAddress(e.target.value)}
+                    onChange={handleCoinAddressChange}
                     className="bg-gray-800 border-gray-700"
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                    Future integration: Pasting Zora coin contract will enable auto-payments.
-                </p>
                 </div>
+
+                {isCoinLoading && (
+                    <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Fetching coin data...
+                    </div>
+                )}
+
+                {coinData && (
+                    <div className="p-4 rounded-lg bg-gray-800/50 border border-blue-500/30">
+                        <div className="flex items-center gap-3 mb-2">
+                             <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold overflow-hidden relative">
+                                {coinData.symbol.substring(0, 2)}
+                             </div>
+                            <div>
+                                <div className="font-bold">{coinData.name}</div>
+                                <div className="text-xs text-gray-400">{coinData.symbol}</div>
+                            </div>
+                        </div>
+                        <div className="flex justify-between text-sm text-gray-500 mt-2">
+                             <span>Supply: {Number(coinData.totalSupply).toLocaleString()}</span>
+                             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> Base</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
@@ -358,7 +443,7 @@ export default function BoostPage() {
 
             <Button
                 onClick={() => handleBoost("coin")}
-                disabled={isProcessing || !coinAddress}
+                disabled={isProcessing || !coinAddress || isCoinLoading}
                 className="w-full bg-blue-600 hover:bg-blue-700 h-12 text-lg font-bold"
             >
                 {isProcessing ? (

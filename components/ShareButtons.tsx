@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Review } from '@/lib/reviewme-contract';
+import type { Review } from '@/lib/types';
 import { formatAddress } from '@/lib/neynar';
 import { useProfile } from '@/lib/hooks/useNeynar';
 import { useFrame } from '@/components/providers/FrameProvider';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 interface ShareButtonsProps {
-  reviewId: number;
+  reviewId: number | string;
   review: Review;
 }
 

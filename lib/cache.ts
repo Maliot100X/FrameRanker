@@ -1,5 +1,5 @@
 /**
- * Client-side caching system for ReviewMe
+ * Client-side caching system for FrameRanker
  * Uses IndexedDB for large data (reviews) and localStorage for small data (txHash, profiles)
  */
 
@@ -19,7 +19,7 @@ interface CacheEntry<T> {
 // ==================== IndexedDB (for large data) ====================
 
 const DB_NAME = 'reviewme-cache';
-const DB_VERSION = 4; // Incremented to force cache reset
+const DB_VERSION = 5; // Incremented to force cache reset
 const REVIEW_STORE = 'reviews';
 const PROFILE_STORE = 'profiles';
 const REVIEWS_FOR_WALLET_STORE = 'reviewsForWallet';
@@ -93,7 +93,7 @@ function getDB(): Promise<IDBDatabase> {
 // ==================== Review Cache (IndexedDB) ====================
 
 export interface CachedReview {
-  reviewId: number;
+  reviewId: number | string;
   reviewer: `0x${string}`;
   reviewee: `0x${string}`;
   content: string;
@@ -101,7 +101,7 @@ export interface CachedReview {
   timestamp: string; // BigInt serialized as string
 }
 
-export async function getCachedReview(reviewId: number): Promise<CachedReview | null> {
+export async function getCachedReview(reviewId: number | string): Promise<CachedReview | null> {
   if (typeof window === 'undefined') return null;
 
   try {
@@ -160,7 +160,7 @@ export async function setCachedReview(reviewId: number, review: CachedReview): P
   }
 }
 
-export async function deleteCachedReview(reviewId: number): Promise<void> {
+export async function deleteCachedReview(reviewId: number | string): Promise<void> {
   if (typeof window === 'undefined') return;
 
   try {
@@ -181,7 +181,7 @@ export async function deleteCachedReview(reviewId: number): Promise<void> {
 
 const TX_HASH_KEY_PREFIX = 'reviewme:txhash:';
 
-export function getCachedTxHash(reviewId: number): string | null {
+export function getCachedTxHash(reviewId: number | string): string | null {
   if (typeof window === 'undefined') return null;
 
   try {
@@ -204,7 +204,7 @@ export function getCachedTxHash(reviewId: number): string | null {
   }
 }
 
-export function setCachedTxHash(reviewId: number, txHash: string): void {
+export function setCachedTxHash(reviewId: number | string, txHash: string): void {
   if (typeof window === 'undefined') return;
 
   try {

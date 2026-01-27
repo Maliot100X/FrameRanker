@@ -5,7 +5,7 @@ import { ExternalLink } from 'lucide-react';
 import { useTxHash } from '@/lib/hooks/useReview';
 
 interface TxHashLinkProps {
-  reviewId: number;
+  reviewId: number | string;
   initialTxHash?: string | null;
 }
 

@@ -1,42 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http, fallback, parseAbiItem } from "viem";
-import { base } from "viem/chains";
-import { BASE_RPC_ENDPOINTS } from "@/lib/reviewme-contract";
-
-function _getTransport(rpcEndpoints: readonly string[]) {
-  return fallback(
-    rpcEndpoints.map((url) =>
-      http(url, {
-        timeout: 2_000, // Reduced timeout: 5 seconds (getLogs is heavy)
-        retryCount: 0, // Reduced retries: 1 retry (faster failure)
-      })
-    ),
-    { rank: false } // Sequential fallback
-  );
-}
-
-const REVIEWME_CONTRACT_ADDRESS =
-  (process.env.NEXT_PUBLIC_REVIEWME_CONTRACT_ADDRESS as `0x${string}`) ||
-  "0x5BfC8705cF877776e461e27FAcB51D8C2bDd00c7";
-
-// ReviewSubmitted event signature
-const REVIEW_SUBMITTED_EVENT = parseAbiItem(
-  "event ReviewSubmitted(uint256 indexed reviewId, address indexed reviewer, address indexed reviewee, string content, uint8 emoji, uint256 timestamp)"
-);
+import { prisma } from "@/lib/db.server";
 
 // Cache for tx hashes (in-memory, per serverless instance)
-const txHashCache = new Map<number, string>();
+const txHashCache = new Map<string | number, string>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-const cacheTimestamps = new Map<number, number>();
+const cacheTimestamps = new Map<string | number, number>();
 
 /**
  * Get transaction hashes for multiple review IDs in batch
- * Only scans recent blocks (last 7 days ~ 300,000 blocks) to minimize RPC calls
+ * Queries Prisma Payment table for purpose: "REVIEW:{reviewId}"
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { reviewIds }: { reviewIds: number[] } = body;
+    const { reviewIds }: { reviewIds: (number | string)[] } = body;
 
     if (!Array.isArray(reviewIds) || reviewIds.length === 0) {
       return NextResponse.json(
@@ -45,16 +22,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create public client per request
-    const publicClient = createPublicClient({
-      chain: base,
-      transport: _getTransport(BASE_RPC_ENDPOINTS),
-    });
-
     // Check cache first
     const now = Date.now();
-    const cachedResults: Record<number, string> = {};
-    const uncachedIds: number[] = [];
+    const cachedResults: Record<string | number, string> = {};
+    const uncachedIds: (number | string)[] = [];
 
     for (const reviewId of reviewIds) {
       const cached = txHashCache.get(reviewId);
@@ -79,69 +50,65 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get current block number
-    const currentBlock = await publicClient.getBlockNumber();
-
-    // Scan last 7 days (~300,000 blocks at ~2s per block)
-    // Base block time is ~2 seconds, so 7 days = 7 * 24 * 60 * 60 / 2 = 302,400 blocks
-    const BLOCKS_PER_7_DAYS = 300_000n;
-    const fromBlock =
-      currentBlock > BLOCKS_PER_7_DAYS ? currentBlock - BLOCKS_PER_7_DAYS : 0n;
-
     console.log(
-      `[tx-hashes] Fetching events for ${uncachedIds.length} reviewIds from block ${fromBlock} to ${currentBlock}`
+      `[tx-hashes] Fetching payments for ${uncachedIds.length} reviewIds`
     );
 
-    // Fetch ReviewSubmitted events in batch
-    // Get all events and filter by reviewId (more efficient than multiple queries)
-    const logs = await publicClient.getLogs({
-      address: REVIEWME_CONTRACT_ADDRESS,
-      event: REVIEW_SUBMITTED_EVENT,
-      fromBlock,
-      toBlock: currentBlock,
+    // Fetch payments from Prisma
+    // We look for payments where purpose is in the list of "REVIEW:{id}"
+    const purposes = uncachedIds.map(id => `REVIEW:${id}`);
+    
+    const payments = await prisma.payment.findMany({
+      where: {
+        purpose: {
+          in: purposes
+        },
+        status: {
+            // Should we filter by status? Maybe COMPLETED or PENDING?
+            // For now, any status is fine as long as it exists.
+            not: "FAILED"
+        }
+      },
+      select: {
+        txHash: true,
+        purpose: true
+      }
     });
 
-    console.log(`[tx-hashes] Found ${logs.length} ReviewSubmitted events`);
+    const dbResults: Record<string | number, string> = {};
 
-    // Map events to reviewId -> txHash
-    const txHashes: Record<number, string> = { ...cachedResults };
-
-    for (const log of logs) {
-      if (log.args.reviewId !== undefined) {
-        const reviewId = Number(log.args.reviewId);
-        if (uncachedIds.includes(reviewId)) {
-          txHashes[reviewId] = log.transactionHash;
-          // Update cache
-          txHashCache.set(reviewId, log.transactionHash);
-          cacheTimestamps.set(reviewId, now);
+    for (const payment of payments) {
+        // Extract reviewId from purpose "REVIEW:{id}"
+        const reviewIdStr = payment.purpose.replace("REVIEW:", "");
+        // Try to match with original ID type (number or string)
+        // If the ID was a number originally, it will be string in purpose.
+        // We need to map it back to the requested ID.
+        
+        // Find matching requested ID
+        const matchedId = uncachedIds.find(id => String(id) === reviewIdStr);
+        if (matchedId !== undefined) {
+            dbResults[matchedId] = payment.txHash;
+            
+            // Update cache
+            txHashCache.set(matchedId, payment.txHash);
+            cacheTimestamps.set(matchedId, now);
         }
-      }
-    }
-
-    // For reviewIds not found in events, cache null to avoid repeated lookups
-    for (const reviewId of uncachedIds) {
-      if (!txHashes[reviewId]) {
-        // Don't cache null - allow retry in case event is in older blocks
-        console.warn(
-          `[tx-hashes] ReviewId ${reviewId} not found in recent events`
-        );
-      }
     }
 
     return NextResponse.json(
-      { txHashes },
+      { txHashes: { ...cachedResults, ...dbResults } },
       {
         headers: {
           "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
         },
       }
     );
-  } catch (error: any) {
-    console.error("Failed to get tx hashes:", error);
-    const errorMessage =
-      error?.message ||
-      error?.toString() ||
-      "Failed to fetch transaction hashes";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+
+  } catch (error) {
+    console.error("[tx-hashes] Error fetching tx hashes:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

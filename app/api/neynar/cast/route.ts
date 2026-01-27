@@ -18,16 +18,40 @@ export async function GET(request: NextRequest) {
     }
 
     // Extract hash from URL
-    // Format: https://warpcast.com/username/0xHASH
-    const match = url.match(/\/0x([a-fA-F0-9]+)$/)
-    if (!match) {
+    // Supports formats:
+    // https://warpcast.com/username/0xHASH
+    // https://warpcast.com/username/HASH
+    // https://warpcast.com/~/conversations/0xHASH
+    
+    let hash = '';
+    
+    // Remove query parameters
+    const cleanUrl = url.split('?')[0];
+    
+    // 1. Try to find 0x-prefixed hash in the URL path
+    const hashMatch = cleanUrl.match(/(0x[a-fA-F0-9]+)/);
+    
+    if (hashMatch) {
+      hash = hashMatch[1];
+    } else {
+      // 2. Fallback: Check last path segment if it's raw hex (no 0x)
+      const parts = cleanUrl.split('/');
+      const lastPart = parts[parts.length - 1];
+      
+      if (/^[a-fA-F0-9]+$/.test(lastPart)) {
+        // Assume it's a hash if it's reasonably long (e.g. > 10 chars)
+        if (lastPart.length >= 10) {
+          hash = '0x' + lastPart;
+        }
+      }
+    }
+
+    if (!hash) {
       return NextResponse.json(
         { error: 'Invalid cast URL format' },
         { status: 400 }
       )
     }
-
-    const hash = '0x' + match[1]
 
     const response = await fetch(
       `https://api.neynar.com/v2/farcaster/cast?identifier=${hash}&type=hash`,

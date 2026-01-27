@@ -9,7 +9,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Pink gradient theme for ReviewMe
+        // Pink gradient theme for FrameRanker
         primary: {
           50: '#fdf2f8',
           100: '#fce7f3',

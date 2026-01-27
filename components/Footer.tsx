@@ -12,10 +12,10 @@ export function Footer() {
 
   // Determine profile link based on platform
   const profileLink = isLoading
-    ? 'https://farcaster.xyz/project7' // Default to Farcaster while loading
+    ? 'https://farcaster.xyz/maliotsol' // Default to Farcaster while loading
     : platform === 'base'
-    ? 'https://base.app/profile/0x648A4Da99134d27e3Ae89F5f33bDd535EDcA720D'
-    : 'https://farcaster.xyz/project7';
+    ? 'https://base.app/profile/0xCcD1E099590bfEdf279e239558772Bbb50902EF6'
+    : 'https://farcaster.xyz/maliotsol';
 
   return (
     <footer className="w-full mt-auto pb-24 md:pb-6">
@@ -33,7 +33,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-pink-400 hover:text-pink-300 transition-colors underline"
             >
-              @project7
+              @maliotsol
             </Link>
             {' '}and ❤️
           </p>

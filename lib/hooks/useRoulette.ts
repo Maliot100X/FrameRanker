@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAccount, useWalletClient } from 'wagmi';
 import { createPublicClient, http, formatEther } from 'viem';
 import { base } from 'viem/chains';
-import { BASE_RPC_ENDPOINTS } from '../reviewme-contract';
+import { RPC_ENDPOINTS } from '../rpc';
 
 // Contract address - set via environment variable
 export const ROULETTE_ADDRESS = 
@@ -95,7 +95,7 @@ export const ROULETTE_ABI = [
 // Create public client
 const publicClient = createPublicClient({
   chain: base,
-  transport: http(BASE_RPC_ENDPOINTS[0]),
+  transport: http(RPC_ENDPOINTS[0]),
 });
 
 // Types

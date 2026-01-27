@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
-import { Zap, TrendingUp, Star, User } from 'lucide-react';
+import { Zap, TrendingUp, Star, User, Coins } from 'lucide-react';
 import Image from 'next/image';
+import { FeaturedCoin } from '@/components/FeaturedCoin';
 
 interface BoostedProfile {
   id: string;
@@ -29,9 +30,16 @@ interface BoostedPost {
   };
 }
 
+interface BoostedCoin {
+  id: string;
+  coinAddress: string;
+  coinType: string;
+}
+
 export default function Home() {
   const [profiles, setProfiles] = useState<BoostedProfile[]>([]);
   const [posts, setPosts] = useState<BoostedPost[]>([]);
+  const [coins, setCoins] = useState<BoostedCoin[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +49,7 @@ export default function Home() {
         const data = await res.json();
         if (data.boostedProfiles) setProfiles(data.boostedProfiles);
         if (data.boostedPosts) setPosts(data.boostedPosts);
+        if (data.boostedCoins) setCoins(data.boostedCoins);
       } catch (error) {
         console.error("Failed to fetch home data:", error);
       } finally {
@@ -58,6 +67,9 @@ export default function Home() {
           FrameRanker
         </h1>
       </div>
+
+      {/* Featured Coin (Zora Integration) */}
+      <FeaturedCoin />
 
       {/* Boosted Profiles */}
       <section>
@@ -127,6 +139,43 @@ export default function Home() {
                                 </div>
                             </div>
                         </div>
+                    </Card>
+                ))
+            )}
+        </div>
+      </section>
+
+      {/* Boosted Coins */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Coins className="text-blue-500 w-5 h-5" />
+          <h2 className="text-xl font-bold">Community Boosted Coins</h2>
+        </div>
+        <div className="space-y-4">
+            {isLoading ? (
+                [1, 2].map((i) => <div key={i} className="h-24 bg-gray-800 rounded-xl animate-pulse" />)
+            ) : coins.length === 0 ? (
+                <p className="text-gray-500 text-sm italic">No active coin boosts.</p>
+            ) : (
+                coins.map((boost) => (
+                    <Card key={boost.id} className="p-4 border-blue-500/20 bg-blue-500/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
+                                <Coins className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="font-mono text-sm">{boost.coinAddress.substring(0, 6)}...{boost.coinAddress.substring(38)}</div>
+                                <div className="text-xs text-blue-400">Boosted Coin</div>
+                            </div>
+                        </div>
+                        <a 
+                            href={`https://basescan.org/token/${boost.coinAddress}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-blue-500/20 px-3 py-1 rounded-full text-blue-300 hover:bg-blue-500/30 transition-colors"
+                        >
+                            View
+                        </a>
                     </Card>
                 ))
             )}
