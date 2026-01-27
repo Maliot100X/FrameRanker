@@ -30,6 +30,7 @@ export const DEFAULT_METADATA: Metadata = {
     images: ["https://frame-ranker.vercel.app/og-image.png"],
   },
   other: {
+    "virtual-protocol-site-verification": "a20887ccae2780b75af9576170f0878d",
     "fc:miniapp": JSON.stringify({
       version: "1",
       imageUrl: "https://frame-ranker.vercel.app/og-image.png",
